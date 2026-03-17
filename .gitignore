@@ -34,3 +34,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+scripts/venv/
+__pycache__/
+*.pyc
+
+# claude
+.claude/
