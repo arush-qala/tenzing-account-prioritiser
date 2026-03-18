@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, CheckSquare } from 'lucide-react';
+import { LogOut, LayoutDashboard, CheckSquare, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavHeaderProps {
@@ -24,6 +24,7 @@ export function NavHeader({ userEmail }: NavHeaderProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/actions', label: 'My Actions', icon: CheckSquare },
+    { href: '/chat', label: 'Chat', icon: MessageSquare },
   ];
 
   return (
