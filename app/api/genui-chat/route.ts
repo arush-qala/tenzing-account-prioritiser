@@ -1,19 +1,18 @@
 // ---------------------------------------------------------------------------
-// Generative UI Chat API Route — Thesys C1 + tool calling
+// Generative UI Chat API Route — Thesys C1 + manual tool calling
 // ---------------------------------------------------------------------------
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getGenuiClient } from '@/lib/ai/genui-client';
 import { PORTFOLIO_SYSTEM_PROMPT, buildGenuiTools } from '@/lib/ai/genui-chat';
-import { transformStream } from '@crayonai/stream';
+import { crayonStream } from '@crayonai/stream';
 import type OpenAI from 'openai';
 
 export const maxDuration = 60;
 
 // ---------------------------------------------------------------------------
-// In-memory message store (per thread). Sufficient for demo; production
-// would persist to Supabase.
+// In-memory message store (per thread)
 // ---------------------------------------------------------------------------
 
 type DBMessage = OpenAI.Chat.ChatCompletionMessageParam & { id?: string };
@@ -65,42 +64,101 @@ export async function POST(req: NextRequest) {
   const store = getStore(threadId);
   store.addMessage(prompt);
 
-  // 4. Build tools with Supabase access
+  // 4. Build tools
   const client = getGenuiClient();
-  const tools = buildGenuiTools(supabase);
+  const rawTools = buildGenuiTools(supabase);
+
+  // Separate: API-facing tool definitions vs local implementations
+  const toolDefs = rawTools.map((t) => ({
+    type: t.type,
+    function: {
+      name: t.function.name,
+      description: t.function.description,
+      parameters: t.function.parameters,
+    },
+  }));
+
+  const toolImpls: Record<string, (args: Record<string, unknown>) => Promise<string>> = {};
+  for (const t of rawTools) {
+    toolImpls[t.function.name] = t.function.function as (args: Record<string, unknown>) => Promise<string>;
+  }
 
   try {
-    // 5. Call C1 with tool calling + streaming
-    const runner = client.chat.completions.runTools({
-      model: 'c1-nightly',
-      messages: [
-        { role: 'system', content: PORTFOLIO_SYSTEM_PROMPT },
-        ...store.getOpenAIMessages(),
-      ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tools: tools as any,
-      stream: true,
-    });
+    // 5. Manual tool-calling loop (non-streaming)
+    const allMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: PORTFOLIO_SYSTEM_PROMPT },
+      ...store.getOpenAIMessages(),
+    ];
 
-    // 6. Transform to Crayon stream format
-    const responseStream = transformStream(
-      runner as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
-      (chunk) => chunk.choices[0]?.delta?.content,
-      {
-        onEnd: ({ accumulated }) => {
-          const message = accumulated.filter(Boolean).join('');
-          if (message) {
-            store.addMessage({
-              role: 'assistant',
-              content: message,
-              id: responseId,
-            });
-          }
-        },
-      },
-    ) as ReadableStream;
+    const MAX_TOOL_ROUNDS = 5;
+    let finalContent = '';
 
-    return new NextResponse(responseStream, {
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const response = await client.chat.completions.create({
+        model: 'c1-nightly',
+        messages: allMessages,
+        tools: toolDefs as OpenAI.Chat.ChatCompletionTool[],
+      });
+
+      const choice = response.choices[0];
+      const message = choice.message;
+
+      // No tool calls — we have the final response
+      if (!message.tool_calls?.length) {
+        finalContent = message.content || '';
+        break;
+      }
+
+      // Append the assistant message (with tool_calls) to history
+      const toolCalls = message.tool_calls as Array<{
+        id: string;
+        type: 'function';
+        function: { name: string; arguments: string };
+      }>;
+      allMessages.push({
+        role: 'assistant',
+        content: message.content || '',
+        tool_calls: toolCalls.map((tc) => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: { name: tc.function.name, arguments: tc.function.arguments },
+        })),
+      });
+
+      // Execute each tool call and append results
+      for (const tc of toolCalls) {
+        const impl = toolImpls[tc.function.name];
+        if (!impl) {
+          allMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify({ error: `Unknown tool: ${tc.function.name}` }),
+          });
+          continue;
+        }
+
+        const args = JSON.parse(tc.function.arguments || '{}');
+        const result = await impl(args);
+        allMessages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: result,
+        });
+      }
+    }
+
+    // 6. Store the assistant response
+    if (finalContent) {
+      store.addMessage({ role: 'assistant', content: finalContent, id: responseId });
+    }
+
+    // 7. Wrap in Crayon stream format (C1Chat expects text/event-stream)
+    const { stream, onText, onEnd, onLLMEnd } = crayonStream();
+    onText(finalContent);
+    onLLMEnd();
+    onEnd();
+
+    return new NextResponse(stream as ReadableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
@@ -109,7 +167,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Generative UI chat failed';
-    console.error('[genui-chat]', message);
+    console.error('[genui-chat]', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
