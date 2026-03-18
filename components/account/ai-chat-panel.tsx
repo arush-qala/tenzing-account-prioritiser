@@ -3,9 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, Trash2, Bot, User, Volume2, Square, Mic, Loader2, X } from 'lucide-react';
-import { useTextToSpeech } from '@/lib/audio/use-text-to-speech';
-import { useSpeechRecognition } from '@/lib/audio/use-speech-recognition';
+import { MessageSquare, Send, Trash2, Bot, User, X } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,38 +20,6 @@ interface AiChatPanelProps {
 }
 
 // ---------------------------------------------------------------------------
-// Speaker button for individual messages
-// ---------------------------------------------------------------------------
-
-function MessageSpeaker({ text }: { text: string }) {
-  const tts = useTextToSpeech();
-
-  if (!text) return null;
-
-  return (
-    <div>
-      <button
-        className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-        onClick={() => (tts.isPlaying ? tts.stop() : tts.play(text))}
-        disabled={tts.isLoading}
-      >
-        {tts.isLoading ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : tts.isPlaying ? (
-          <Square className="size-3" />
-        ) : (
-          <Volume2 className="size-3" />
-        )}
-        {tts.isLoading ? 'Loading' : tts.isPlaying ? 'Stop' : 'Listen'}
-      </button>
-      {tts.error && (
-        <p className="text-[10px] text-red-500 mt-0.5">{tts.error}</p>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -63,7 +29,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const stt = useSpeechRecognition();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -72,25 +37,16 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     }
   }, [messages, streaming]);
 
-  // When speech recognition produces a final transcript, set and send
-  useEffect(() => {
-    if (stt.transcript && !stt.isListening) {
-      sendMessage(stt.transcript);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stt.transcript, stt.isListening]);
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || streaming) return;
 
-  async function sendMessage(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || streaming) return;
-
-    const userMsg: ChatMessage = { role: 'user', content: trimmed };
+    const userMsg: ChatMessage = { role: 'user', content: text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput('');
     setStreaming(true);
 
-    // Add placeholder for assistant response
     setMessages([...newMessages, { role: 'assistant', content: '' }]);
 
     try {
@@ -132,20 +88,8 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     }
   }
 
-  async function handleSend() {
-    await sendMessage(input);
-  }
-
   function handleClear() {
     setMessages([]);
-  }
-
-  function handleMic() {
-    if (stt.isListening) {
-      stt.stopListening();
-    } else {
-      stt.startListening();
-    }
   }
 
   const suggestions = [
@@ -154,11 +98,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     'Summarise the key risks in plain language',
     'Draft a talking point for my next QBR',
   ];
-
-  // Determine what to show in input field
-  const inputDisplay = stt.isListening
-    ? stt.interimTranscript || 'Listening...'
-    : input;
 
   return (
     <>
@@ -221,11 +160,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                 Ask me anything about {accountName}. I have full context on their
                 metrics, scores, and AI analysis.
               </p>
-              {stt.isSupported && (
-                <p className="text-center text-[10px] text-muted-foreground">
-                  You can also use the microphone to ask questions by voice.
-                </p>
-              )}
               <div className="flex flex-col gap-2 w-full">
                 {suggestions.map((s) => (
                   <button
@@ -263,9 +197,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                         Thinking...
                       </span>
                     )}
-                    {msg.role === 'assistant' && msg.content && !(i === messages.length - 1 && streaming) && (
-                      <MessageSpeaker text={msg.content} />
-                    )}
                   </div>
                   {msg.role === 'user' && (
                     <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary">
@@ -278,13 +209,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
           )}
         </div>
 
-        {/* Error feedback for STT */}
-        {stt.error && (
-          <div className="px-4 pb-1">
-            <p className="text-xs text-red-500">{stt.error}</p>
-          </div>
-        )}
-
         {/* Input area */}
         <div className="flex-none border-t p-4">
           <form
@@ -294,29 +218,17 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
             }}
             className="flex gap-2"
           >
-            {stt.isSupported && (
-              <Button
-                type="button"
-                size="sm"
-                variant={stt.isListening ? 'destructive' : 'outline'}
-                onClick={handleMic}
-                disabled={streaming}
-                title={stt.isListening ? 'Stop recording' : 'Speak your question'}
-              >
-                <Mic className={`size-3.5 ${stt.isListening ? 'animate-pulse' : ''}`} />
-              </Button>
-            )}
             <Input
-              placeholder={stt.isListening ? 'Listening...' : 'Ask about this account...'}
-              value={inputDisplay}
+              placeholder="Ask about this account..."
+              value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={streaming || stt.isListening}
+              disabled={streaming}
               className="text-sm"
             />
             <Button
               type="submit"
               size="sm"
-              disabled={!input.trim() || streaming || stt.isListening}
+              disabled={!input.trim() || streaming}
             >
               <Send className="size-3.5" />
             </Button>

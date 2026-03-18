@@ -18,6 +18,7 @@ import { NotesPanel } from '@/components/account/notes-panel';
 import { ActionRecorder } from '@/components/account/action-recorder';
 import { CommentsSection } from '@/components/account/comments-section';
 import { AiChatPanel } from '@/components/account/ai-chat-panel';
+import { VoiceChat } from '@/components/account/voice-chat';
 
 // ---------------------------------------------------------------------------
 // Page
@@ -115,6 +116,26 @@ export default async function AccountDetailPage({ params }: PageProps) {
     }));
   }
 
+  // ---- Build account context for voice chat ----
+  const voiceContext = [
+    `Account: ${account.account_name} (${account.account_id})`,
+    `Industry: ${account.industry} | Segment: ${account.segment} | Region: ${account.region}`,
+    `Status: ${account.account_status} | Lifecycle: ${account.lifecycle_stage}`,
+    `Owner: ${account.account_owner} | CSM: ${account.csm_owner}`,
+    `ARR: £${account.arr_gbp?.toLocaleString()} | MRR: £${account.mrr_current_gbp?.toLocaleString()}`,
+    `MRR Trend: ${((account.mrr_trend_pct ?? 0) * 100).toFixed(1)}%`,
+    `Seats: ${account.seats_used}/${account.seats_purchased}`,
+    `Usage Score: ${account.usage_score_current} (was ${account.usage_score_3m_ago})`,
+    `Days to Renewal: ${account.days_to_renewal}`,
+    `NPS: ${account.latest_nps ?? 'N/A'} | CSAT: ${account.avg_csat_90d ?? 'N/A'}`,
+    `Open Tickets: ${account.open_tickets_count} (${account.urgent_open_tickets_count} urgent)`,
+    `Priority Score: ${result.calibratedScore.toFixed(1)} | Tier: ${result.priorityTier} | Type: ${result.priorityType}`,
+    analysis?.reasoning ? `AI Analysis: ${analysis.reasoning}` : '',
+    account.recent_support_summary ? `Support Notes: ${account.recent_support_summary}` : '',
+    account.recent_customer_note ? `Customer Notes: ${account.recent_customer_note}` : '',
+    account.recent_sales_note ? `Sales Notes: ${account.recent_sales_note}` : '',
+  ].filter(Boolean).join('\n');
+
   // ---- Render ----
   return (
     <div className="min-h-screen bg-background">
@@ -124,15 +145,22 @@ export default async function AccountDetailPage({ params }: PageProps) {
       {/* Main content */}
       <main className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col gap-6">
-          {/* Account header + Chat button */}
+          {/* Account header + Chat + Voice buttons */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <AccountHeader account={account} result={result} />
             </div>
-            <AiChatPanel
-              accountId={account.account_id}
-              accountName={account.account_name}
-            />
+            <div className="flex items-center gap-2">
+              <VoiceChat
+                accountId={account.account_id}
+                accountName={account.account_name}
+                accountContext={voiceContext}
+              />
+              <AiChatPanel
+                accountId={account.account_id}
+                accountName={account.account_name}
+              />
+            </div>
           </div>
 
           <Separator />
