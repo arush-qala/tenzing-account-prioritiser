@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
@@ -173,6 +173,11 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
   // Local analyses state so we can update after per-row analysis
   const [analyses, setAnalyses] = useState(initialAnalyses);
   const [analysingId, setAnalysingId] = useState<string | null>(null);
+
+  // Sync when server props change (e.g. after Analyse All + router.refresh)
+  useEffect(() => {
+    setAnalyses(initialAnalyses);
+  }, [initialAnalyses]);
 
   async function handleAnalyse(e: React.MouseEvent, accountId: string) {
     e.stopPropagation();
