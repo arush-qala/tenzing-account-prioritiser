@@ -222,7 +222,7 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
               <ul className="space-y-1">
                 {displayInsights.urgent_actions.map((action, i) => (
                   <li key={i} className="text-sm leading-snug">
-                    {action}
+                    {typeof action === 'string' ? action : (action as { action?: string }).action ?? JSON.stringify(action)}
                   </li>
                 ))}
               </ul>

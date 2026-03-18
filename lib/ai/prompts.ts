@@ -278,9 +278,7 @@ Return a JSON object with exactly these fields:
   "segment_patterns": [
     { "segment": "segment name", "pattern": "observation about this segment" }
   ],
-  "urgent_actions": [
-    { "action": "action for leadership this week", "kpi": "pipeline_conversion | expansion | churn_reduction", "accounts_affected": "account names" }
-  ]
+  "urgent_actions": ["[Pipeline/Expansion/Churn] specific action for leadership this week, referencing affected accounts"]
 }`;
 
   return { system, user };
