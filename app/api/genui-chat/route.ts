@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const response = await client.chat.completions.create({
-        model: 'c1-nightly',
+        model: process.env.THESYS_MODEL || 'c1-nightly',
         messages: allMessages,
         tools: toolDefs as OpenAI.Chat.ChatCompletionTool[],
       });
@@ -165,9 +165,14 @@ export async function POST(req: NextRequest) {
         Connection: 'keep-alive',
       },
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Generative UI chat failed';
-    console.error('[genui-chat]', err);
+  } catch (err: unknown) {
+    // Log full error details for debugging
+    const errObj = err as Record<string, unknown>;
+    console.error('[genui-chat] Error type:', typeof err);
+    console.error('[genui-chat] Error message:', errObj?.message ?? String(err));
+    console.error('[genui-chat] Error status:', errObj?.status);
+    console.error('[genui-chat] Error body:', JSON.stringify(errObj?.error ?? errObj?.body ?? ''));
+    const message = errObj?.message ? String(errObj.message) : 'Generative UI chat failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
