@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const response = await client.chat.completions.create({
-        model: process.env.THESYS_MODEL || 'c1-nightly',
+        model: 'c1/anthropic/claude-sonnet-4/v-20251230',
         messages: allMessages,
         tools: toolDefs as OpenAI.Chat.ChatCompletionTool[],
       });
