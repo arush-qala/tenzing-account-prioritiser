@@ -18,7 +18,10 @@ import {
   AlertTriangle,
   ArrowUpDown,
   ShieldCheck,
+  Volume2,
+  Square,
 } from 'lucide-react';
+import { useTextToSpeech } from '@/lib/audio/use-text-to-speech';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,8 +77,27 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
   const [loading, setLoading] = useState(false);
   const [localAnalysis, setLocalAnalysis] = useState<AccountAnalysis | null>(analysis);
   const [error, setError] = useState<string | null>(null);
+  const tts = useTextToSpeech();
 
   const isLoading = externalLoading || loading;
+
+  function handleListen() {
+    if (tts.isPlaying) {
+      tts.stop();
+      return;
+    }
+    if (!displayAnalysis) return;
+
+    // Build a briefing script from reasoning + actions
+    let briefing = displayAnalysis.reasoning;
+    if (displayAnalysis.recommended_actions?.length > 0) {
+      briefing += '. Recommended actions: ';
+      briefing += displayAnalysis.recommended_actions
+        .map((a, i) => `${i + 1}. ${a.action}, assigned to ${a.owner}, timeframe ${a.timeframe}`)
+        .join('. ');
+    }
+    tts.play(briefing);
+  }
 
   async function analyseAccount() {
     setLoading(true);
@@ -149,19 +171,37 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
           <CardTitle>AI Analysis</CardTitle>
         </div>
         <CardAction>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={analyseAccount}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="mr-1 size-3 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-1 size-3" />
-            )}
-            Re-analyse
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleListen}
+              disabled={tts.isLoading}
+              title={tts.isPlaying ? 'Stop audio' : 'Listen to briefing'}
+            >
+              {tts.isLoading ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : tts.isPlaying ? (
+                <Square className="mr-1 size-3" />
+              ) : (
+                <Volume2 className="mr-1 size-3" />
+              )}
+              {tts.isLoading ? 'Loading' : tts.isPlaying ? 'Stop' : 'Listen'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={analyseAccount}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-1 size-3" />
+              )}
+              Re-analyse
+            </Button>
+          </div>
         </CardAction>
       </CardHeader>
 

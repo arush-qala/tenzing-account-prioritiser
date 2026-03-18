@@ -10,7 +10,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { MessageSquare, Send, Trash2, Bot, User } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Bot, User, Volume2, Square, Mic, Loader2 } from 'lucide-react';
+import { useTextToSpeech } from '@/lib/audio/use-text-to-speech';
+import { useSpeechRecognition } from '@/lib/audio/use-speech-recognition';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,6 +29,33 @@ interface AiChatPanelProps {
 }
 
 // ---------------------------------------------------------------------------
+// Speaker button for individual messages
+// ---------------------------------------------------------------------------
+
+function MessageSpeaker({ text }: { text: string }) {
+  const tts = useTextToSpeech();
+
+  if (!text) return null;
+
+  return (
+    <button
+      className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+      onClick={() => (tts.isPlaying ? tts.stop() : tts.play(text))}
+      disabled={tts.isLoading}
+    >
+      {tts.isLoading ? (
+        <Loader2 className="size-3 animate-spin" />
+      ) : tts.isPlaying ? (
+        <Square className="size-3" />
+      ) : (
+        <Volume2 className="size-3" />
+      )}
+      {tts.isLoading ? 'Loading' : tts.isPlaying ? 'Stop' : 'Listen'}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -35,6 +64,7 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stt = useSpeechRecognition();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -43,11 +73,24 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     }
   }, [messages, streaming]);
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || streaming) return;
+  // When speech recognition produces a transcript, set it as input and send
+  useEffect(() => {
+    if (stt.transcript && !stt.isListening) {
+      setInput(stt.transcript);
+      // Auto-send after a short delay so user sees the transcript
+      const timer = setTimeout(() => {
+        sendMessage(stt.transcript);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stt.transcript, stt.isListening]);
 
-    const userMsg: ChatMessage = { role: 'user', content: text };
+  async function sendMessage(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || streaming) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: trimmed };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput('');
@@ -96,8 +139,20 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     }
   }
 
+  async function handleSend() {
+    await sendMessage(input);
+  }
+
   function handleClear() {
     setMessages([]);
+  }
+
+  function handleMic() {
+    if (stt.isListening) {
+      stt.stopListening();
+    } else {
+      stt.startListening();
+    }
   }
 
   const suggestions = [
@@ -151,6 +206,11 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                 Ask me anything about {accountName}. I have full context on their
                 metrics, scores, and AI analysis.
               </p>
+              {stt.isSupported && (
+                <p className="text-center text-[10px] text-muted-foreground">
+                  You can also use the microphone to ask questions by voice.
+                </p>
+              )}
               <div className="flex flex-col gap-2 w-full">
                 {suggestions.map((s) => (
                   <button
@@ -190,6 +250,10 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                         Thinking...
                       </span>
                     )}
+                    {/* Level 2: Speaker icon on completed assistant messages */}
+                    {msg.role === 'assistant' && msg.content && !(i === messages.length - 1 && streaming) && (
+                      <MessageSpeaker text={msg.content} />
+                    )}
                   </div>
                   {msg.role === 'user' && (
                     <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary">
@@ -211,17 +275,30 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
             }}
             className="flex gap-2"
           >
+            {/* Level 3: Microphone button */}
+            {stt.isSupported && (
+              <Button
+                type="button"
+                size="sm"
+                variant={stt.isListening ? 'destructive' : 'outline'}
+                onClick={handleMic}
+                disabled={streaming}
+                title={stt.isListening ? 'Stop recording' : 'Speak your question'}
+              >
+                <Mic className={`size-3.5 ${stt.isListening ? 'animate-pulse' : ''}`} />
+              </Button>
+            )}
             <Input
-              placeholder="Ask about this account..."
-              value={input}
+              placeholder={stt.isListening ? 'Listening...' : 'Ask about this account...'}
+              value={stt.isListening ? 'Listening...' : input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={streaming}
+              disabled={streaming || stt.isListening}
               className="text-sm"
             />
             <Button
               type="submit"
               size="sm"
-              disabled={!input.trim() || streaming}
+              disabled={!input.trim() || streaming || stt.isListening}
             >
               <Send className="size-3.5" />
             </Button>
