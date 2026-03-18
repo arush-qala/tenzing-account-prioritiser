@@ -122,7 +122,7 @@ export async function analyseAccount(
     const { system, user } = buildAccountAnalysisPrompt(account, scoringResult);
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6-20250627',
       max_tokens: 1500,
       system,
       messages: [{ role: 'user', content: user }],
