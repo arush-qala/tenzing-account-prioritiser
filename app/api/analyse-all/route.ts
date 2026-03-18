@@ -90,7 +90,7 @@ export async function POST(request: Request) {
           adjusted_tier: analysis.adjusted_tier,
           adjustment_reason: analysis.adjustment_reason,
           analysed_at: new Date().toISOString(),
-          model_version: 'claude-sonnet-4-6-20250627',
+          model_version: 'claude-sonnet-4-20250514',
         };
 
         await supabase
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         .insert({
           insights,
           generated_at: new Date().toISOString(),
-          model_version: 'claude-sonnet-4-6-20250627',
+          model_version: 'claude-sonnet-4-20250514',
         });
 
       if (insightsError) {

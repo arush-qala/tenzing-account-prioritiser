@@ -81,14 +81,6 @@ function VoiceChatInner({ accountName, accountContext }: VoiceChatProps) {
 
         onConnect: () => {
           setStatus('connected');
-          // Send account context once connected
-          if (!contextSentRef.current && conversationRef.current) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (conversationRef.current as any).sendContextualUpdate(
-              `You are now discussing account: ${accountName}. Here is the full account context:\n\n${accountContext}\n\nUse this data to answer the user's questions. Be specific and reference metrics.`
-            );
-            contextSentRef.current = true;
-          }
         },
 
         onDisconnect: () => {
@@ -130,6 +122,11 @@ function VoiceChatInner({ accountName, accountContext }: VoiceChatProps) {
       });
 
       conversationRef.current = conversation;
+
+      // Send account context now that session is established
+      conversation.sendContextualUpdate(
+        `You are now discussing account: ${accountName}. Here is the full account context:\n\n${accountContext}\n\nUse this data to answer the user's questions. Be specific and reference metrics.`
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to start voice chat';
       setError(msg);

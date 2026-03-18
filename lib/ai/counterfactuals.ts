@@ -125,7 +125,7 @@ export async function generateCounterfactuals(
     );
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6-20250627',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 800,
       system,
       messages: [{ role: 'user', content: user }],
