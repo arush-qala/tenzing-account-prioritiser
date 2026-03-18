@@ -4,6 +4,7 @@ import { scoreAllAccounts } from '@/lib/scoring/engine';
 import type { Account } from '@/lib/scoring/types';
 import { Separator } from '@/components/ui/separator';
 
+import { NavHeader } from '@/components/nav-header';
 import { AccountHeader } from '@/components/account/account-header';
 import { WaterfallChart } from '@/components/account/waterfall-chart';
 import { MetricsGrid } from '@/components/account/metrics-grid';
@@ -15,6 +16,8 @@ import { CounterfactualPanel } from '@/components/account/counterfactual-panel';
 import { RiskOpportunity } from '@/components/account/risk-opportunity';
 import { NotesPanel } from '@/components/account/notes-panel';
 import { ActionRecorder } from '@/components/account/action-recorder';
+import { CommentsSection } from '@/components/account/comments-section';
+import { AiChatPanel } from '@/components/account/ai-chat-panel';
 
 // ---------------------------------------------------------------------------
 // Page
@@ -115,23 +118,22 @@ export default async function AccountDetailPage({ params }: PageProps) {
   // ---- Render ----
   return (
     <div className="min-h-screen bg-background">
-      {/* Header bar */}
-      <header className="border-b bg-card">
-        <div className="mx-auto max-w-[1400px] px-6 py-3">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Account Prioritiser
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            AI-powered portfolio prioritisation
-          </p>
-        </div>
-      </header>
+      {/* Header with navigation */}
+      <NavHeader userEmail={user.email} />
 
       {/* Main content */}
       <main className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col gap-6">
-          {/* Account header */}
-          <AccountHeader account={account} result={result} />
+          {/* Account header + Chat button */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <AccountHeader account={account} result={result} />
+            </div>
+            <AiChatPanel
+              accountId={account.account_id}
+              accountName={account.account_name}
+            />
+          </div>
 
           <Separator />
 
@@ -157,7 +159,10 @@ export default async function AccountDetailPage({ params }: PageProps) {
                 accountId={account.account_id}
               />
 
-              <RecommendedActions actions={actions} />
+              <RecommendedActions
+                actions={actions}
+                accountId={account.account_id}
+              />
 
               <CounterfactualPanel
                 counterfactualUp={counterfactualUp}
@@ -175,20 +180,23 @@ export default async function AccountDetailPage({ params }: PageProps) {
 
           <Separator />
 
-          {/* Action Recorder (full width) */}
-          <ActionRecorder
-            accountId={account.account_id}
-            existingActions={(actionsRows ?? []).map((row) => {
-              const r = row as Record<string, unknown>;
-              return {
-                id: (r.id as string) ?? '',
-                action_type: (r.action_type as string) ?? '',
-                description: (r.description as string) ?? '',
-                ai_accuracy_rating: (r.ai_accuracy_rating as string) ?? null,
-                created_at: (r.created_at as string) ?? '',
-              };
-            })}
-          />
+          {/* Comments + Action Recorder (side by side) */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <CommentsSection accountId={account.account_id} />
+            <ActionRecorder
+              accountId={account.account_id}
+              existingActions={(actionsRows ?? []).map((row) => {
+                const r = row as Record<string, unknown>;
+                return {
+                  id: (r.id as string) ?? '',
+                  action_type: (r.action_type as string) ?? '',
+                  description: (r.description as string) ?? '',
+                  ai_accuracy_rating: (r.ai_accuracy_rating as string) ?? null,
+                  created_at: (r.created_at as string) ?? '',
+                };
+              })}
+            />
+          </div>
         </div>
       </main>
     </div>

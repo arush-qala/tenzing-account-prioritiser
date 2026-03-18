@@ -7,9 +7,10 @@ import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { AiInsightsPanel } from '@/components/dashboard/ai-insights-panel';
 import { AccuracyTracker } from '@/components/dashboard/accuracy-tracker';
 import { RenewalTimeline } from '@/components/dashboard/renewal-timeline';
+import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { Filters } from '@/components/dashboard/filters';
 import { PriorityList } from '@/components/dashboard/priority-list';
-import { SignOutButton } from './sign-out-button';
+import { NavHeader } from '@/components/nav-header';
 import { AnalyseAllButton } from '@/components/dashboard/analyse-all-button';
 import { Separator } from '@/components/ui/separator';
 
@@ -82,25 +83,8 @@ export default async function DashboardPage() {
   // ---- Render ----
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">
-              Account Prioritiser
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              AI-powered portfolio prioritisation
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {user.email}
-            </span>
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
+      {/* Header with navigation */}
+      <NavHeader userEmail={user.email} />
 
       {/* Main content */}
       <main className="mx-auto max-w-[1400px] px-6 py-6">
@@ -108,10 +92,13 @@ export default async function DashboardPage() {
           {/* Summary cards */}
           <PortfolioSummary results={scoredResults} />
 
-          {/* Renewal Timeline + Accuracy Tracker (side by side) */}
+          {/* Renewal Timeline + Activity Feed + Accuracy Tracker */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1">
               <RenewalTimeline results={scoredResults} />
+            </div>
+            <div className="lg:col-span-1">
+              <ActivityFeed />
             </div>
             <div className="lg:col-span-1">
               <AccuracyTracker actions={actions} />

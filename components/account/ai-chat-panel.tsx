@@ -1,0 +1,233 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { MessageSquare, Send, Trash2, Bot, User } from 'lucide-react';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface AiChatPanelProps {
+  accountId: string;
+  accountName: string;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, streaming]);
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || streaming) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: text };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
+    setStreaming(true);
+
+    // Add placeholder for assistant response
+    setMessages([...newMessages, { role: 'assistant', content: '' }]);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          account_id: accountId,
+          messages: newMessages,
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        setMessages([
+          ...newMessages,
+          { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' },
+        ]);
+        setStreaming(false);
+        return;
+      }
+
+      // Stream the response
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setMessages([...newMessages, { role: 'assistant', content: accumulated }]);
+      }
+    } catch {
+      setMessages([
+        ...newMessages,
+        { role: 'assistant', content: 'Connection error. Please try again.' },
+      ]);
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  function handleClear() {
+    setMessages([]);
+  }
+
+  const suggestions = [
+    'What should I prioritise for this account this week?',
+    'What would happen if we offered a 10% discount?',
+    'Summarise the key risks in plain language',
+    'Draft a talking point for my next QBR',
+  ];
+
+  return (
+    <Sheet>
+      <SheetTrigger
+        render={
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <MessageSquare className="size-3.5" />
+            Chat with AI
+          </Button>
+        }
+      />
+      <SheetContent side="right" className="flex w-full flex-col sm:max-w-lg">
+        <SheetHeader className="flex-none">
+          <div className="flex items-center justify-between pr-6">
+            <SheetTitle className="text-base">
+              AI Chat: {accountName}
+            </SheetTitle>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={handleClear}
+              >
+                <Trash2 className="mr-1 size-3" />
+                Clear
+              </Button>
+            )}
+          </div>
+        </SheetHeader>
+
+        {/* Messages area */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-4 py-4"
+        >
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+                <Bot className="size-6 text-muted-foreground" />
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Ask me anything about {accountName}. I have full context on their
+                metrics, scores, and AI analysis.
+              </p>
+              <div className="flex flex-col gap-2 w-full">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    className="rounded-lg border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    onClick={() => {
+                      setInput(s);
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <Bot className="size-3.5 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    {msg.role === 'assistant' && msg.content === '' && streaming && (
+                      <span className="inline-block animate-pulse text-muted-foreground">
+                        Thinking...
+                      </span>
+                    )}
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary">
+                      <User className="size-3.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Input area */}
+        <div className="flex-none border-t p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              placeholder="Ask about this account..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={streaming}
+              className="text-sm"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!input.trim() || streaming}
+            >
+              <Send className="size-3.5" />
+            </Button>
+          </form>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
