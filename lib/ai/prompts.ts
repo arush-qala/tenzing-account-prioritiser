@@ -37,8 +37,10 @@ export function buildAccountAnalysisPrompt(
   scoringResult: ScoringResult,
 ): AccountAnalysisPrompt {
   const system =
-    'You are a senior portfolio analyst at a B2B tech PE firm. ' +
-    'Provide clear, CEO-level analysis. Return ONLY valid JSON with no markdown fences, ' +
+    'You are a senior portfolio analyst at a B2B tech PE firm, advising commercial leadership ' +
+    '(CRO, VP Sales, Head of Customer Success) who work cross-functionally across Sales and CS. ' +
+    'Frame all analysis around three outcomes: pipeline conversion, expansion revenue, and churn reduction. ' +
+    'Provide clear, actionable analysis. Return ONLY valid JSON with no markdown fences, ' +
     'no commentary, and no extra keys.';
 
   const user = `Analyse the following B2B SaaS account and provide a prioritisation assessment.
@@ -95,11 +97,11 @@ SCORING RESULTS:
 
 Return a JSON object with exactly these fields:
 {
-  "reasoning": "2-3 sentences of CEO-level analysis specific to this account",
+  "reasoning": "2-3 sentences explaining why this account needs attention NOW, framed around revenue impact (pipeline conversion, expansion, or churn risk). Be specific about £ at stake.",
   "recommended_actions": [
-    { "action": "specific action", "owner": "person name from account data", "timeframe": "e.g. Next 7 days", "rationale": "why this action" },
-    { "action": "...", "owner": "...", "timeframe": "...", "rationale": "..." },
-    { "action": "...", "owner": "...", "timeframe": "...", "rationale": "..." }
+    { "action": "specific action", "owner": "person name from account data", "timeframe": "e.g. Next 7 days", "rationale": "why this action", "kpi_impact": "pipeline_conversion | expansion | churn_reduction" },
+    { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." },
+    { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." }
   ],
   "risk_factors": ["specific risk 1", "specific risk 2"],
   "opportunity_factors": ["specific opportunity 1", "specific opportunity 2"],
@@ -212,8 +214,9 @@ export function buildPortfolioInsightsPrompt(
   summaryData: PortfolioSummaryData,
 ): PortfolioInsightsPrompt {
   const system =
-    'You are a senior portfolio analyst at a B2B tech PE firm advising the leadership team. ' +
-    'Synthesise portfolio data into strategic, actionable insights. ' +
+    'You are a senior portfolio analyst at a B2B tech PE firm advising the commercial leadership team ' +
+    '(CRO, VP Sales, Head of Customer Success). Synthesise portfolio data into strategic, ' +
+    'actionable insights organised around pipeline conversion, expansion revenue, and churn reduction. ' +
     'Return ONLY valid JSON with no markdown fences, no commentary, and no extra keys.';
 
   const tierDist = Object.entries(summaryData.tierDistribution)
@@ -275,7 +278,9 @@ Return a JSON object with exactly these fields:
   "segment_patterns": [
     { "segment": "segment name", "pattern": "observation about this segment" }
   ],
-  "urgent_actions": ["action 1 for leadership this week", "action 2", "action 3"]
+  "urgent_actions": [
+    { "action": "action for leadership this week", "kpi": "pipeline_conversion | expansion | churn_reduction", "accounts_affected": "account names" }
+  ]
 }`;
 
   return { system, user };

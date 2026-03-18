@@ -32,26 +32,26 @@ export default function ChatPage() {
           welcomeMessage={{
             title: 'Portfolio Analyst',
             description:
-              'Ask me anything about your 60 accounts. I can show you charts, tables, and visual breakdowns across the full portfolio.',
+              'I help you identify which accounts need attention and what action to take. Ask about churn risk, expansion opportunities, renewal pipeline, or any cross-functional Sales and CS question.',
           }}
           conversationStarters={{
             variant: 'long',
             options: [
               {
-                displayText: 'Show me all critical-tier accounts',
-                prompt: 'Show me all accounts in the critical priority tier with their ARR and key metrics in a table',
+                displayText: 'Which accounts have the highest churn risk?',
+                prompt: 'Which accounts have the highest churn risk this quarter? Show them in a table with ARR at stake, days to renewal, and health score',
               },
               {
-                displayText: 'Compare ARR across segments',
-                prompt: 'Show me a bar chart comparing total ARR across Enterprise, Mid-Market, and SMB segments',
+                displayText: 'Biggest expansion opportunities by ARR',
+                prompt: 'Where are the biggest expansion opportunities? Show me accounts with high expansion pipeline relative to their current ARR in a bar chart',
               },
               {
-                displayText: 'Renewal pipeline next 90 days',
-                prompt: 'Which accounts renew in the next 90 days? Show them sorted by renewal date with ARR at risk',
+                displayText: 'Renewal pipeline with risk assessment',
+                prompt: 'Show me the renewal pipeline for the next 90 days with risk assessment, sorted by ARR at risk',
               },
               {
-                displayText: 'Portfolio health distribution',
-                prompt: 'Show me a pie chart of the portfolio distribution across priority tiers',
+                displayText: 'Portfolio health across segments',
+                prompt: 'Compare portfolio health across Enterprise, Mid-Market, and SMB segments with a breakdown of tier distribution',
               },
             ],
           }}

@@ -48,7 +48,7 @@ AI ANALYSIS SUMMARY:
 - Recommended Actions: ${analysis.recommended_actions?.map((a) => `${a.action} (${a.owner}, ${a.timeframe})`).join('; ') || 'None'}`
     : '\nAI ANALYSIS: Not yet performed for this account.';
 
-  return `You are a senior portfolio analyst at a B2B tech PE firm. You are having a conversation with a portfolio company leader about a specific account. Be concise, direct, and CEO-level in your communication. Reference specific data points when answering questions.
+  return `You are a senior portfolio analyst advising commercial leadership (CRO, VP Sales, Head of Customer Success) about a specific account. These leaders work across both Sales and CS — they need a unified view, not siloed data. Frame insights around pipeline conversion, expansion revenue, and churn risk. Be concise, direct, and action-oriented. Reference specific data points and £ values when answering.
 
 ACCOUNT CONTEXT:
 - Account: ${account.account_name} (${account.account_id})
@@ -88,6 +88,9 @@ ${analysisBlock}
 
 INSTRUCTIONS:
 - Be specific and reference the data above
+- When recommending actions, specify which KPI it serves (pipeline conversion, expansion, or churn reduction)
+- Frame risks in terms of £ ARR at stake
+- Frame opportunities in terms of potential expansion revenue
 - If asked about comparisons, note you only have data for this account
 - If asked hypothetical "what if" questions, reason about how changes would affect the scoring
 - Keep responses concise (2-4 paragraphs max unless asked for detail)
