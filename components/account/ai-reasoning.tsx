@@ -207,6 +207,7 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
 
       <CardContent className="space-y-4">
         {error && <p className="text-xs text-red-500">{error}</p>}
+        {tts.error && <p className="text-xs text-red-500">Audio: {tts.error}</p>}
 
         {/* Reasoning */}
         <div className="rounded-lg bg-muted/50 p-4">

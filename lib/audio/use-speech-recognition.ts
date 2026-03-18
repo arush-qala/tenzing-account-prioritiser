@@ -2,50 +2,72 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionErrorEvent {
-  error: string;
-}
-
 export function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<unknown>(null);
 
   useEffect(() => {
-    const SpeechRecognition =
+    const SR =
       (window as unknown as Record<string, unknown>).SpeechRecognition ||
       (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
-    setIsSupported(!!SpeechRecognition);
+    setIsSupported(!!SR);
   }, []);
 
   const startListening = useCallback(() => {
-    const SpeechRecognition =
+    const SR =
       (window as unknown as Record<string, unknown>).SpeechRecognition ||
       (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) return;
+    if (!SR) {
+      setError('Speech recognition not supported in this browser');
+      return;
+    }
+
+    setError(null);
+    setTranscript('');
+    setInterimTranscript('');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recognition = new (SpeechRecognition as any)();
+    const recognition = new (SR as any)();
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = 'en-GB';
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const result = event.results[event.results.length - 1];
-      if (result.isFinal) {
-        setTranscript(result[0].transcript);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let final = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          final += result[0].transcript;
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+
+      if (final) {
+        setTranscript(final);
+        setInterimTranscript('');
+      } else {
+        setInterimTranscript(interim);
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
+      if (event.error === 'not-allowed') {
+        setError('Microphone access denied. Please allow microphone in your browser.');
+      } else if (event.error === 'no-speech') {
+        setError('No speech detected. Try again.');
+      } else {
+        setError(`Speech recognition error: ${event.error}`);
+      }
       setIsListening(false);
     };
 
@@ -54,9 +76,14 @@ export function useSpeechRecognition() {
     };
 
     recognitionRef.current = recognition;
-    setTranscript('');
     setIsListening(true);
-    recognition.start();
+
+    try {
+      recognition.start();
+    } catch {
+      setError('Failed to start speech recognition');
+      setIsListening(false);
+    }
   }, []);
 
   const stopListening = useCallback(() => {
@@ -67,5 +94,13 @@ export function useSpeechRecognition() {
     setIsListening(false);
   }, []);
 
-  return { startListening, stopListening, transcript, isListening, isSupported };
+  return {
+    startListening,
+    stopListening,
+    transcript,
+    interimTranscript,
+    isListening,
+    isSupported,
+    error,
+  };
 }

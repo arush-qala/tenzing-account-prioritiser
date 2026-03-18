@@ -3,14 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { MessageSquare, Send, Trash2, Bot, User, Volume2, Square, Mic, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Bot, User, Volume2, Square, Mic, Loader2, X } from 'lucide-react';
 import { useTextToSpeech } from '@/lib/audio/use-text-to-speech';
 import { useSpeechRecognition } from '@/lib/audio/use-speech-recognition';
 
@@ -38,20 +31,25 @@ function MessageSpeaker({ text }: { text: string }) {
   if (!text) return null;
 
   return (
-    <button
-      className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-      onClick={() => (tts.isPlaying ? tts.stop() : tts.play(text))}
-      disabled={tts.isLoading}
-    >
-      {tts.isLoading ? (
-        <Loader2 className="size-3 animate-spin" />
-      ) : tts.isPlaying ? (
-        <Square className="size-3" />
-      ) : (
-        <Volume2 className="size-3" />
+    <div>
+      <button
+        className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => (tts.isPlaying ? tts.stop() : tts.play(text))}
+        disabled={tts.isLoading}
+      >
+        {tts.isLoading ? (
+          <Loader2 className="size-3 animate-spin" />
+        ) : tts.isPlaying ? (
+          <Square className="size-3" />
+        ) : (
+          <Volume2 className="size-3" />
+        )}
+        {tts.isLoading ? 'Loading' : tts.isPlaying ? 'Stop' : 'Listen'}
+      </button>
+      {tts.error && (
+        <p className="text-[10px] text-red-500 mt-0.5">{tts.error}</p>
       )}
-      {tts.isLoading ? 'Loading' : tts.isPlaying ? 'Stop' : 'Listen'}
-    </button>
+    </div>
   );
 }
 
@@ -60,6 +58,7 @@ function MessageSpeaker({ text }: { text: string }) {
 // ---------------------------------------------------------------------------
 
 export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
+  const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -73,15 +72,10 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     }
   }, [messages, streaming]);
 
-  // When speech recognition produces a transcript, set it as input and send
+  // When speech recognition produces a final transcript, set and send
   useEffect(() => {
     if (stt.transcript && !stt.isListening) {
-      setInput(stt.transcript);
-      // Auto-send after a short delay so user sees the transcript
-      const timer = setTimeout(() => {
-        sendMessage(stt.transcript);
-      }, 300);
-      return () => clearTimeout(timer);
+      sendMessage(stt.transcript);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stt.transcript, stt.isListening]);
@@ -118,7 +112,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
         return;
       }
 
-      // Stream the response
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = '';
@@ -162,22 +155,36 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
     'Draft a talking point for my next QBR',
   ];
 
+  // Determine what to show in input field
+  const inputDisplay = stt.isListening
+    ? stt.interimTranscript || 'Listening...'
+    : input;
+
   return (
-    <Sheet>
-      <SheetTrigger
-        render={
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <MessageSquare className="size-3.5" />
-            Chat with AI
-          </Button>
-        }
-      />
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-lg">
-        <SheetHeader className="flex-none">
-          <div className="flex items-center justify-between pr-6">
-            <SheetTitle className="text-base">
-              AI Chat: {accountName}
-            </SheetTitle>
+    <>
+      {/* Toggle button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5"
+        onClick={() => setOpen(!open)}
+      >
+        <MessageSquare className="size-3.5" />
+        {open ? 'Close Chat' : 'Chat with AI'}
+      </Button>
+
+      {/* Side pane — non-modal, no backdrop, no scroll lock */}
+      <div
+        className={`fixed right-0 top-0 z-40 flex h-full w-full flex-col border-l bg-background shadow-xl transition-transform duration-300 sm:w-[28rem] ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <h3 className="text-sm font-semibold">
+            AI Chat: {accountName}
+          </h3>
+          <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <Button
                 variant="ghost"
@@ -189,8 +196,16 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                 Clear
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setOpen(false)}
+            >
+              <X className="size-4" />
+            </Button>
           </div>
-        </SheetHeader>
+        </div>
 
         {/* Messages area */}
         <div
@@ -216,9 +231,7 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                   <button
                     key={s}
                     className="rounded-lg border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    onClick={() => {
-                      setInput(s);
-                    }}
+                    onClick={() => setInput(s)}
                   >
                     {s}
                   </button>
@@ -250,7 +263,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
                         Thinking...
                       </span>
                     )}
-                    {/* Level 2: Speaker icon on completed assistant messages */}
                     {msg.role === 'assistant' && msg.content && !(i === messages.length - 1 && streaming) && (
                       <MessageSpeaker text={msg.content} />
                     )}
@@ -266,6 +278,13 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
           )}
         </div>
 
+        {/* Error feedback for STT */}
+        {stt.error && (
+          <div className="px-4 pb-1">
+            <p className="text-xs text-red-500">{stt.error}</p>
+          </div>
+        )}
+
         {/* Input area */}
         <div className="flex-none border-t p-4">
           <form
@@ -275,7 +294,6 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
             }}
             className="flex gap-2"
           >
-            {/* Level 3: Microphone button */}
             {stt.isSupported && (
               <Button
                 type="button"
@@ -290,7 +308,7 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
             )}
             <Input
               placeholder={stt.isListening ? 'Listening...' : 'Ask about this account...'}
-              value={stt.isListening ? 'Listening...' : input}
+              value={inputDisplay}
               onChange={(e) => setInput(e.target.value)}
               disabled={streaming || stt.isListening}
               className="text-sm"
@@ -304,7 +322,7 @@ export function AiChatPanel({ accountId, accountName }: AiChatPanelProps) {
             </Button>
           </form>
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </>
   );
 }
