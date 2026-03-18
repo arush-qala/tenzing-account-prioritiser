@@ -17,7 +17,8 @@ import {
   TooltipContent,
   TooltipProvider,
 } from '@/components/ui/tooltip';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Sparkles, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils/format';
 import { getFiltersFromParams } from '@/components/dashboard/filters';
 import {
@@ -161,13 +162,38 @@ const DEFAULT_SORT: SortState = {
   direction: 'desc',
 };
 
-export function PriorityList({ results, analyses }: PriorityListProps) {
+export function PriorityList({ results, analyses: initialAnalyses }: PriorityListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filters = getFiltersFromParams(searchParams);
 
   // Sort state (local, not persisted to URL)
   const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT);
+
+  // Local analyses state so we can update after per-row analysis
+  const [analyses, setAnalyses] = useState(initialAnalyses);
+  const [analysingId, setAnalysingId] = useState<string | null>(null);
+
+  async function handleAnalyse(e: React.MouseEvent, accountId: string) {
+    e.stopPropagation();
+    setAnalysingId(accountId);
+    try {
+      const res = await fetch('/api/analyse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_id: accountId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalyses((prev) => ({
+          ...prev,
+          [accountId]: { reasoning: data.reasoning },
+        }));
+      }
+    } finally {
+      setAnalysingId(null);
+    }
+  }
 
   const handleSort = useCallback((column: string) => {
     setSortState((prev) => {
@@ -390,6 +416,7 @@ export function PriorityList({ results, analyses }: PriorityListProps) {
               onFilter={handleColumnFilter}
             />
             <TableHead className="min-w-[200px]">AI Summary</TableHead>
+            <TableHead className="w-[90px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -473,6 +500,26 @@ export function PriorityList({ results, analyses }: PriorityListProps) {
                       Not analysed
                     </span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant={analysis?.reasoning ? 'ghost' : 'outline'}
+                    className="h-7 text-xs"
+                    disabled={analysingId === account.account_id}
+                    onClick={(e) => handleAnalyse(e, account.account_id)}
+                  >
+                    {analysingId === account.account_id ? (
+                      <Loader2 className="mr-1 size-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-1 size-3" />
+                    )}
+                    {analysingId === account.account_id
+                      ? 'Analysing'
+                      : analysis?.reasoning
+                        ? 'Redo'
+                        : 'Analyse'}
+                  </Button>
                 </TableCell>
               </TableRow>
             );
