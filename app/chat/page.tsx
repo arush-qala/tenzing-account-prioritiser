@@ -39,14 +39,26 @@ type MsgPart = TextPart | TemplatePart;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbMsgToSdk(msg: DbMsg): any {
   if (msg.role === 'user') {
+    // Extract text from the stored content
+    let text = '';
+    const c = msg.content;
+    if (typeof c === 'string') {
+      text = c;
+    } else if (c && typeof c === 'object') {
+      const obj = c as Record<string, unknown>;
+      if (typeof obj.message === 'string') {
+        text = obj.message;
+      } else if (typeof obj.content === 'string') {
+        text = obj.content;
+      }
+    }
+
     return {
       id: msg.id,
       role: 'user',
       type: 'prompt',
-      message:
-        typeof msg.content === 'string'
-          ? msg.content
-          : (msg.content as { message?: string })?.message ?? '',
+      message: text,
+      content: text,
     };
   }
 
@@ -83,23 +95,6 @@ function dbThreadToSdk(t: DbThread) {
 }
 
 // ---------------------------------------------------------------------------
-// Save a message to the DB (fire-and-forget)
-// ---------------------------------------------------------------------------
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function persistMsg(threadId: string, msg: any) {
-  const content =
-    msg.role === 'user'
-      ? { message: msg.message ?? '' }
-      : { message: msg.message ?? '' };
-
-  await fetch(`/api/threads/${threadId}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: msg.id, role: msg.role, content }),
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Chat Page Component
 // ---------------------------------------------------------------------------
 export default function ChatPage() {
@@ -130,7 +125,8 @@ export default function ChatPage() {
     createThread: useCallback(async (firstMsg) => {
       const threadId = crypto.randomUUID();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const title = (firstMsg as any).message?.slice(0, 60) || 'New Chat';
+      const msgText = (firstMsg as any).message || (firstMsg as any).content || '';
+      const title = typeof msgText === 'string' ? msgText.slice(0, 60) : 'New Chat';
 
       const res = await fetch('/api/threads', {
         method: 'POST',
@@ -173,18 +169,30 @@ export default function ChatPage() {
     }, []),
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onUpdateMessage: useCallback(({ message }: { message: any }) => {
+    onUpdateMessage: useCallback(async ({ message }: { message: any }) => {
       const selectedId = threadListManager.selectedThreadId;
-      if (selectedId && message.role === 'assistant') {
-        persistMsg(selectedId, message);
+      if (!selectedId) return;
+
+      // Persist both user and assistant messages
+      let content: unknown;
+      if (message.role === 'user') {
+        content = { message: message.message ?? message.content ?? '' };
+      } else {
+        content = { message: message.message ?? '' };
       }
+
+      await fetch(`/api/threads/${selectedId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: message.id,
+          role: message.role,
+          content,
+        }),
+      });
     }, [threadListManager.selectedThreadId]),
 
     apiUrl: '/api/genui-chat',
-
-    customizeC1: {
-      artifactViewMode: ArtifactViewMode.AUTO_OPEN,
-    },
   });
 
   return (

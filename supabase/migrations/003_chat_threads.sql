@@ -56,6 +56,10 @@ CREATE POLICY "Users can read messages in own threads"
 CREATE POLICY "Users can insert messages in own threads"
   ON chat_messages FOR INSERT TO authenticated
   WITH CHECK (EXISTS (SELECT 1 FROM chat_threads WHERE chat_threads.id = chat_messages.thread_id AND chat_threads.user_id = auth.uid()));
+CREATE POLICY "Users can update messages in own threads"
+  ON chat_messages FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM chat_threads WHERE chat_threads.id = chat_messages.thread_id AND chat_threads.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM chat_threads WHERE chat_threads.id = chat_messages.thread_id AND chat_threads.user_id = auth.uid()));
 CREATE POLICY "Users can delete messages in own threads"
   ON chat_messages FOR DELETE TO authenticated
   USING (EXISTS (SELECT 1 FROM chat_threads WHERE chat_threads.id = chat_messages.thread_id AND chat_threads.user_id = auth.uid()));

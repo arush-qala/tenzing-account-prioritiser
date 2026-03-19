@@ -78,30 +78,36 @@ ${accountRows}`;
 }
 
 // ---------------------------------------------------------------------------
-// Convert SDK messages to OpenAI format for the LLM
+// Load conversation history from DB for a thread
 // ---------------------------------------------------------------------------
-type SdkMessage = {
-  id: string;
-  role: 'user' | 'assistant';
-  content?: string;
-  message?: string | Array<{ type: string; text?: string }>;
+
+type DbMsg = {
+  role: string;
+  content: unknown;
 };
 
-function toOpenAIMessages(messages: SdkMessage[]): OpenAI.Chat.ChatCompletionMessageParam[] {
-  return messages.map((m) => {
-    let content = '';
-    if (typeof m.content === 'string') {
-      content = m.content;
-    } else if (typeof m.message === 'string') {
-      content = m.message;
-    } else if (Array.isArray(m.message)) {
-      content = m.message
+function dbMsgToOpenAI(msg: DbMsg): OpenAI.Chat.ChatCompletionMessageParam {
+  let content = '';
+  const c = msg.content;
+
+  if (typeof c === 'string') {
+    content = c;
+  } else if (c && typeof c === 'object') {
+    const obj = c as Record<string, unknown>;
+    if (typeof obj.message === 'string') {
+      content = obj.message;
+    } else if (Array.isArray(obj.message)) {
+      // Assistant messages stored as [{ type: 'text', text: '...' }]
+      content = (obj.message as Array<{ type?: string; text?: string }>)
         .filter((p) => p.type === 'text' && p.text)
         .map((p) => p.text)
         .join('\n');
+    } else if (typeof obj.content === 'string') {
+      content = obj.content;
     }
-    return { role: m.role, content } as OpenAI.Chat.ChatCompletionMessageParam;
-  });
+  }
+
+  return { role: msg.role as 'user' | 'assistant', content };
 }
 
 // ---------------------------------------------------------------------------
@@ -116,91 +122,81 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 2. Parse request — C1Chat with threadManager sends { messages, threadId, responseId }
+  // 2. Parse request — C1Chat with apiUrl sends { prompt, threadId, responseId }
   const body = await req.json();
-  const { messages: rawMessages, threadId, responseId, prompt } = body as {
-    messages?: SdkMessage[];
+  const { prompt, threadId, responseId } = body as {
+    prompt: { role: string; content: string; id?: string };
     threadId: string;
     responseId: string;
-    prompt?: SdkMessage;
   };
 
   if (!threadId) {
     return NextResponse.json({ error: 'threadId is required' }, { status: 400 });
   }
 
-  // Build the conversation history for the LLM
-  // When using threadManager, the SDK sends `messages` array
-  // When using apiUrl directly, it sends `prompt` (single message)
-  let conversationMessages: OpenAI.Chat.ChatCompletionMessageParam[];
-
-  if (rawMessages && rawMessages.length > 0) {
-    conversationMessages = toOpenAIMessages(rawMessages);
-  } else if (prompt) {
-    conversationMessages = toOpenAIMessages([prompt]);
-  } else {
-    return NextResponse.json({ error: 'messages or prompt required' }, { status: 400 });
+  if (!prompt) {
+    return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   }
 
   // 3. Persist user message to DB
-  const lastUserMsg = rawMessages
-    ? rawMessages.filter((m) => m.role === 'user').pop()
-    : prompt;
+  const userContent = typeof prompt.content === 'string' ? prompt.content : '';
+  const userMsgId = prompt.id ?? crypto.randomUUID();
 
-  if (lastUserMsg) {
-    const userContent = typeof lastUserMsg.message === 'string'
-      ? lastUserMsg.message
-      : typeof lastUserMsg.content === 'string'
-        ? lastUserMsg.content
-        : '';
+  await supabase.from('chat_messages').upsert({
+    id: userMsgId,
+    thread_id: threadId,
+    role: 'user',
+    content: { message: userContent },
+  });
 
-    await supabase.from('chat_messages').upsert({
-      id: lastUserMsg.id,
-      thread_id: threadId,
-      role: 'user',
-      content: { message: userContent },
-    });
+  // Update thread title from first message if it's still "New Chat"
+  const { data: thread } = await supabase
+    .from('chat_threads')
+    .select('title')
+    .eq('id', threadId)
+    .single();
 
-    // Update thread title from first message if it's still "New Chat"
-    const { data: thread } = await supabase
+  if (thread?.title === 'New Chat' && userContent) {
+    await supabase
       .from('chat_threads')
-      .select('title')
-      .eq('id', threadId)
-      .single();
-
-    if (thread?.title === 'New Chat' && userContent) {
-      await supabase
-        .from('chat_threads')
-        .update({ title: userContent.slice(0, 60), updated_at: new Date().toISOString() })
-        .eq('id', threadId);
-    }
+      .update({ title: userContent.slice(0, 60), updated_at: new Date().toISOString() })
+      .eq('id', threadId);
   }
 
   try {
-    // 4. Fetch portfolio data and build context
+    // 4. Load conversation history from DB
+    const { data: dbMessages } = await supabase
+      .from('chat_messages')
+      .select('role, content')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+
+    const historyMessages: OpenAI.Chat.ChatCompletionMessageParam[] =
+      (dbMessages ?? []).map(dbMsgToOpenAI);
+
+    // 5. Fetch portfolio data and build context
     const dataContext = await buildDataContext(supabase);
     const systemPrompt = PORTFOLIO_SYSTEM_PROMPT + '\n\n' + dataContext;
 
-    // 5. Streaming call to Thesys C1
+    // 6. Streaming call to Thesys C1
     const client = getGenuiClient();
     const llmStream = await client.chat.completions.create({
       model: 'c1/anthropic/claude-sonnet-4/v-20251230',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...conversationMessages,
+        ...historyMessages,
       ],
       stream: true,
     });
 
-    // 6. Convert to Crayon stream format and persist assistant response on completion
+    // 7. Transform stream and persist assistant response on completion
     const responseStream = transformStream(
       llmStream,
-      (chunk) => chunk.choices?.[0]?.delta?.content ?? '',
+      (chunk) => chunk.choices[0]?.delta?.content,
       {
         onEnd: async ({ accumulated }) => {
           const message = accumulated.filter((m) => m).join('');
           if (message) {
-            // Persist assistant message to DB
             await supabase.from('chat_messages').upsert({
               id: responseId,
               thread_id: threadId,
@@ -208,7 +204,6 @@ export async function POST(req: NextRequest) {
               content: { message: [{ type: 'text', text: message }] },
             });
 
-            // Update thread timestamp
             await supabase
               .from('chat_threads')
               .update({ updated_at: new Date().toISOString() })
