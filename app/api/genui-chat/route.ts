@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getGenuiClient } from '@/lib/ai/genui-client';
 import { PORTFOLIO_SYSTEM_PROMPT } from '@/lib/ai/genui-chat';
-import { fromOpenAICompletion } from '@crayonai/stream';
+import { transformStream } from '@crayonai/stream';
 import { scoreAllAccounts } from '@/lib/scoring/engine';
 import type { Account } from '@/lib/scoring/types';
 import type OpenAI from 'openai';
@@ -118,7 +118,6 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Parse request (C1Chat sends { prompt, threadId, responseId })
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { prompt, threadId, responseId } = (await req.json()) as {
     prompt: DBMessage;
     threadId: string;
@@ -152,12 +151,21 @@ export async function POST(req: NextRequest) {
       stream: true,
     });
 
-    // 6. Convert to Crayon stream format using the official helper
-    const responseStream = fromOpenAICompletion(
-      llmStream as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
-    );
+    // 6. Convert to Crayon stream format (matches Thesys template exactly)
+    const responseStream = transformStream(
+      llmStream,
+      (chunk) => chunk.choices?.[0]?.delta?.content ?? '',
+      {
+        onEnd: ({ accumulated }) => {
+          const message = accumulated.filter((m) => m).join('');
+          if (message) {
+            store.addMessage({ role: 'assistant', content: message, id: responseId });
+          }
+        },
+      },
+    ) as ReadableStream;
 
-    return new NextResponse(responseStream as ReadableStream, {
+    return new NextResponse(responseStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
