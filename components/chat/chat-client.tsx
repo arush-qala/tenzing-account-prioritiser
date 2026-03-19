@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { NavHeader } from '@/components/nav-header';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -29,60 +29,56 @@ type DbMsg = {
   created_at: string;
 };
 
-type TextPart = { type: 'text'; text: string };
-type TemplatePart = { type: 'template'; name: string; templateProps: unknown };
-type MsgPart = TextPart | TemplatePart;
+// ---------------------------------------------------------------------------
+// Extract text content from stored message
+// ---------------------------------------------------------------------------
+function extractText(c: unknown): string {
+  if (typeof c === 'string') return c;
+  if (!c || typeof c !== 'object') return '';
+  const obj = c as Record<string, unknown>;
+  if (typeof obj.message === 'string') return obj.message;
+  if (typeof obj.content === 'string') return obj.content;
+  if (Array.isArray(obj.message)) {
+    return (obj.message as Array<{ type?: string; text?: string }>)
+      .filter((p) => p.type === 'text' && p.text)
+      .map((p) => p.text)
+      .join('\n');
+  }
+  return '';
+}
 
 // ---------------------------------------------------------------------------
-// Helpers to convert between DB records and SDK types
+// Convert DB messages to SDK format for loadThread
 // ---------------------------------------------------------------------------
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbMsgToSdk(msg: DbMsg): any {
-  if (msg.role === 'user') {
-    let text = '';
-    const c = msg.content;
-    if (typeof c === 'string') {
-      text = c;
-    } else if (c && typeof c === 'object') {
-      const obj = c as Record<string, unknown>;
-      if (typeof obj.message === 'string') {
-        text = obj.message;
-      } else if (typeof obj.content === 'string') {
-        text = obj.content;
-      }
-    }
+  const text = extractText(msg.content);
 
+  if (msg.role === 'user') {
+    // Strip <content thesys="true">...</content> wrapping for display
+    const stripped = stripThesysTag(text);
     return {
       id: msg.id,
       role: 'user',
       type: 'prompt',
-      message: text,
-      content: text,
+      message: stripped,
+      content: stripped,
     };
   }
 
-  // assistant
-  const content = msg.content as { message?: unknown } | unknown;
-  let parts: MsgPart[];
+  // For assistant messages, the SDK needs the raw C1 DSL content string
+  // (with thesys tags) to re-render generative UI components
+  return {
+    id: msg.id,
+    role: 'assistant',
+    message: [{ type: 'text', text }],
+    content: text,
+  };
+}
 
-  if (typeof content === 'string') {
-    parts = [{ type: 'text', text: content }];
-  } else if (Array.isArray(content)) {
-    parts = content;
-  } else if (content && typeof content === 'object' && 'message' in content) {
-    const inner = (content as { message: unknown }).message;
-    if (Array.isArray(inner)) {
-      parts = inner;
-    } else if (typeof inner === 'string') {
-      parts = [{ type: 'text', text: inner }];
-    } else {
-      parts = [{ type: 'text', text: JSON.stringify(inner) }];
-    }
-  } else {
-    parts = [{ type: 'text', text: JSON.stringify(content) }];
-  }
-
-  return { id: msg.id, role: 'assistant', message: parts };
+function stripThesysTag(text: string): string {
+  const match = text.match(/<content thesys="true">([\s\S]*)<\/content>/);
+  return match ? match[1] : text;
 }
 
 function dbThreadToSdk(t: DbThread) {
@@ -109,6 +105,9 @@ export default function ChatUI() {
     }
     loadUser();
   }, []);
+
+  // Stable ref for selectedThreadId — avoids recreating onUpdateMessage callback
+  const selectedThreadIdRef = useRef<string | null>(null);
 
   const threadListManager = useThreadListManager({
     fetchThreadList: useCallback(async () => {
@@ -151,6 +150,11 @@ export default function ChatUI() {
     onSelectThread: useCallback(() => {}, []),
   });
 
+  // Keep ref in sync with selectedThreadId
+  useEffect(() => {
+    selectedThreadIdRef.current = threadListManager.selectedThreadId ?? null;
+  }, [threadListManager.selectedThreadId]);
+
   const threadManager = useThreadManager({
     threadListManager,
 
@@ -161,9 +165,10 @@ export default function ChatUI() {
       return messages.map(dbMsgToSdk);
     }, []),
 
+    // Stable callback — uses ref instead of dependency on selectedThreadId
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onUpdateMessage: useCallback(async ({ message }: { message: any }) => {
-      const selectedId = threadListManager.selectedThreadId;
+      const selectedId = selectedThreadIdRef.current;
       if (!selectedId) return;
 
       let content: unknown;
@@ -182,7 +187,7 @@ export default function ChatUI() {
           content,
         }),
       });
-    }, [threadListManager.selectedThreadId]),
+    }, []),
 
     apiUrl: '/api/genui-chat',
   });

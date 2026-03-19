@@ -78,7 +78,7 @@ ${accountRows}`;
 }
 
 // ---------------------------------------------------------------------------
-// Load conversation history from DB for a thread
+// Helpers for message format conversion
 // ---------------------------------------------------------------------------
 
 type DbMsg = {
@@ -86,6 +86,47 @@ type DbMsg = {
   content: unknown;
 };
 
+/** Strip <content thesys="true">...</content> wrapping */
+function stripThesysTag(text: string): string {
+  const match = text.match(/<content thesys="true">([\s\S]*)<\/content>/);
+  return match ? match[1] : text;
+}
+
+/**
+ * Extract readable text from Thesys C1 DSL JSON.
+ * Walks the component tree and pulls out textMarkdown, title, subtitle,
+ * description, label, amount, and table data.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromDSL(obj: any): string {
+  const parts: string[] = [];
+
+  function walk(node: unknown) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    const n = node as Record<string, unknown>;
+    // Extract text content fields
+    for (const key of ['textMarkdown', 'title', 'subtitle', 'description', 'label', 'amount', 'heading']) {
+      if (typeof n[key] === 'string' && n[key]) {
+        parts.push(n[key] as string);
+      }
+    }
+    // Recurse into children, props, lhs, rhs, etc.
+    for (const key of ['props', 'children', 'lhs', 'rhs', 'child', 'component']) {
+      if (n[key] && typeof n[key] === 'object') {
+        walk(n[key]);
+      }
+    }
+  }
+
+  walk(obj);
+  return parts.join('. ') || '[Previous assistant response with charts/tables]';
+}
+
+/** Convert a DB message to OpenAI format for LLM history, stripping Thesys DSL */
 function dbMsgToOpenAI(msg: DbMsg): OpenAI.Chat.ChatCompletionMessageParam {
   let content = '';
   const c = msg.content;
@@ -97,13 +138,25 @@ function dbMsgToOpenAI(msg: DbMsg): OpenAI.Chat.ChatCompletionMessageParam {
     if (typeof obj.message === 'string') {
       content = obj.message;
     } else if (Array.isArray(obj.message)) {
-      // Assistant messages stored as [{ type: 'text', text: '...' }]
       content = (obj.message as Array<{ type?: string; text?: string }>)
         .filter((p) => p.type === 'text' && p.text)
         .map((p) => p.text)
         .join('\n');
     } else if (typeof obj.content === 'string') {
       content = obj.content;
+    }
+  }
+
+  // Strip <content thesys="true">...</content> wrapping
+  content = stripThesysTag(content);
+
+  // For assistant messages, if content is Thesys DSL JSON, extract just the text
+  if (msg.role === 'assistant' && content.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(content);
+      content = extractTextFromDSL(parsed);
+    } catch {
+      // Not valid JSON, use as-is
     }
   }
 
@@ -157,9 +210,10 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (thread?.title === 'New Chat' && userContent) {
+    const cleanTitle = stripThesysTag(userContent).slice(0, 60);
     await supabase
       .from('chat_threads')
-      .update({ title: userContent.slice(0, 60), updated_at: new Date().toISOString() })
+      .update({ title: cleanTitle, updated_at: new Date().toISOString() })
       .eq('id', threadId);
   }
 
@@ -190,6 +244,8 @@ export async function POST(req: NextRequest) {
     });
 
     // 7. Transform stream and persist assistant response on completion
+    // Note: onUpdateMessage on the client also persists via /api/threads/{id}/messages
+    // so server-side persistence here is a backup
     const responseStream = transformStream(
       llmStream,
       (chunk) => chunk.choices[0]?.delta?.content,
@@ -197,17 +253,21 @@ export async function POST(req: NextRequest) {
         onEnd: async ({ accumulated }) => {
           const message = accumulated.filter((m) => m).join('');
           if (message) {
-            await supabase.from('chat_messages').upsert({
-              id: responseId,
-              thread_id: threadId,
-              role: 'assistant',
-              content: { message: [{ type: 'text', text: message }] },
-            });
+            try {
+              await supabase.from('chat_messages').upsert({
+                id: responseId,
+                thread_id: threadId,
+                role: 'assistant',
+                content: { message: [{ type: 'text', text: message }] },
+              });
 
-            await supabase
-              .from('chat_threads')
-              .update({ updated_at: new Date().toISOString() })
-              .eq('id', threadId);
+              await supabase
+                .from('chat_threads')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', threadId);
+            } catch (e) {
+              console.error('[genui-chat] Failed to persist assistant message:', e);
+            }
           }
         },
       },
