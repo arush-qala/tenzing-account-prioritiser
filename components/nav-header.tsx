@@ -24,7 +24,7 @@ export function NavHeader({ userEmail }: NavHeaderProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/actions', label: 'My Actions', icon: CheckSquare },
-    { href: '/chat', label: 'Chat', icon: MessageSquare },
+    { href: '/chat', label: 'Ask the Analyst', icon: MessageSquare },
   ];
 
   return (

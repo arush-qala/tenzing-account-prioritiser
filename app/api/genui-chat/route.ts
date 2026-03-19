@@ -1,8 +1,5 @@
 // ---------------------------------------------------------------------------
-// Generative UI Chat API Route — Thesys C1 (streaming, no tool calling)
-// ---------------------------------------------------------------------------
-// Matches the exact Thesys docs pattern: streaming create() + fromOpenAICompletion()
-// Data is embedded in the system prompt instead of using tool calling.
+// Generative UI Chat API Route — Thesys C1 (streaming, persistent threads)
 // ---------------------------------------------------------------------------
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,27 +14,6 @@ import type OpenAI from 'openai';
 export const maxDuration = 60;
 
 // ---------------------------------------------------------------------------
-// In-memory message store (per thread)
-// ---------------------------------------------------------------------------
-
-type DBMessage = OpenAI.Chat.ChatCompletionMessageParam & { id?: string };
-
-const threadStore: Record<string, DBMessage[]> = {};
-
-function getStore(threadId: string) {
-  if (!threadStore[threadId]) threadStore[threadId] = [];
-  const messages = threadStore[threadId];
-  return {
-    addMessage: (msg: DBMessage) => {
-      messages.push(msg);
-    },
-    getOpenAIMessages: (): OpenAI.Chat.ChatCompletionMessageParam[] =>
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      messages.map(({ id, ...rest }) => rest as OpenAI.Chat.ChatCompletionMessageParam),
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Build data context string (embedded in system prompt)
 // ---------------------------------------------------------------------------
 
@@ -46,7 +22,6 @@ async function buildDataContext(supabase: ReturnType<typeof createServerSupabase
   const accounts = (rawAccounts ?? []) as Account[];
   const scored = scoreAllAccounts(accounts);
 
-  // Portfolio summary
   const totalArr = accounts.reduce((sum, a) => sum + (a.arr_gbp ?? 0), 0);
   const totalExpansion = accounts.reduce((sum, a) => sum + (a.expansion_pipeline_gbp ?? 0), 0);
   const totalContraction = accounts.reduce((sum, a) => sum + (a.contraction_risk_gbp ?? 0), 0);
@@ -67,7 +42,6 @@ async function buildDataContext(supabase: ReturnType<typeof createServerSupabase
     regionArr[account.region].arr += account.arr_gbp ?? 0;
   }
 
-  // Account table (compact, one line per account)
   const accountRows = scored.map(({ account: a, result: r }) =>
     [
       a.account_name,
@@ -104,62 +78,141 @@ ${accountRows}`;
 }
 
 // ---------------------------------------------------------------------------
+// Convert SDK messages to OpenAI format for the LLM
+// ---------------------------------------------------------------------------
+type SdkMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content?: string;
+  message?: string | Array<{ type: string; text?: string }>;
+};
+
+function toOpenAIMessages(messages: SdkMessage[]): OpenAI.Chat.ChatCompletionMessageParam[] {
+  return messages.map((m) => {
+    let content = '';
+    if (typeof m.content === 'string') {
+      content = m.content;
+    } else if (typeof m.message === 'string') {
+      content = m.message;
+    } else if (Array.isArray(m.message)) {
+      content = m.message
+        .filter((p) => p.type === 'text' && p.text)
+        .map((p) => p.text)
+        .join('\n');
+    }
+    return { role: m.role, content } as OpenAI.Chat.ChatCompletionMessageParam;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/genui-chat
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   // 1. Auth
   const supabase = createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 2. Parse request (C1Chat sends { prompt, threadId, responseId })
-  const { prompt, threadId, responseId } = (await req.json()) as {
-    prompt: DBMessage;
+  // 2. Parse request — C1Chat with threadManager sends { messages, threadId, responseId }
+  const body = await req.json();
+  const { messages: rawMessages, threadId, responseId, prompt } = body as {
+    messages?: SdkMessage[];
     threadId: string;
     responseId: string;
+    prompt?: SdkMessage;
   };
 
-  if (!prompt || !threadId) {
-    return NextResponse.json(
-      { error: 'prompt and threadId are required' },
-      { status: 400 },
-    );
+  if (!threadId) {
+    return NextResponse.json({ error: 'threadId is required' }, { status: 400 });
   }
 
-  // 3. Thread management
-  const store = getStore(threadId);
-  store.addMessage(prompt);
+  // Build the conversation history for the LLM
+  // When using threadManager, the SDK sends `messages` array
+  // When using apiUrl directly, it sends `prompt` (single message)
+  let conversationMessages: OpenAI.Chat.ChatCompletionMessageParam[];
+
+  if (rawMessages && rawMessages.length > 0) {
+    conversationMessages = toOpenAIMessages(rawMessages);
+  } else if (prompt) {
+    conversationMessages = toOpenAIMessages([prompt]);
+  } else {
+    return NextResponse.json({ error: 'messages or prompt required' }, { status: 400 });
+  }
+
+  // 3. Persist user message to DB
+  const lastUserMsg = rawMessages
+    ? rawMessages.filter((m) => m.role === 'user').pop()
+    : prompt;
+
+  if (lastUserMsg) {
+    const userContent = typeof lastUserMsg.message === 'string'
+      ? lastUserMsg.message
+      : typeof lastUserMsg.content === 'string'
+        ? lastUserMsg.content
+        : '';
+
+    await supabase.from('chat_messages').upsert({
+      id: lastUserMsg.id,
+      thread_id: threadId,
+      role: 'user',
+      content: { message: userContent },
+    });
+
+    // Update thread title from first message if it's still "New Chat"
+    const { data: thread } = await supabase
+      .from('chat_threads')
+      .select('title')
+      .eq('id', threadId)
+      .single();
+
+    if (thread?.title === 'New Chat' && userContent) {
+      await supabase
+        .from('chat_threads')
+        .update({ title: userContent.slice(0, 60), updated_at: new Date().toISOString() })
+        .eq('id', threadId);
+    }
+  }
 
   try {
     // 4. Fetch portfolio data and build context
     const dataContext = await buildDataContext(supabase);
     const systemPrompt = PORTFOLIO_SYSTEM_PROMPT + '\n\n' + dataContext;
 
-    // 5. Streaming call to Thesys C1 (matches docs pattern exactly)
+    // 5. Streaming call to Thesys C1
     const client = getGenuiClient();
     const llmStream = await client.chat.completions.create({
       model: 'c1/anthropic/claude-sonnet-4/v-20251230',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...store.getOpenAIMessages(),
+        ...conversationMessages,
       ],
       stream: true,
     });
 
-    // 6. Convert to Crayon stream format (matches Thesys template exactly)
+    // 6. Convert to Crayon stream format and persist assistant response on completion
     const responseStream = transformStream(
       llmStream,
       (chunk) => chunk.choices?.[0]?.delta?.content ?? '',
       {
-        onEnd: ({ accumulated }) => {
+        onEnd: async ({ accumulated }) => {
           const message = accumulated.filter((m) => m).join('');
           if (message) {
-            store.addMessage({ role: 'assistant', content: message, id: responseId });
+            // Persist assistant message to DB
+            await supabase.from('chat_messages').upsert({
+              id: responseId,
+              thread_id: threadId,
+              role: 'assistant',
+              content: { message: [{ type: 'text', text: message }] },
+            });
+
+            // Update thread timestamp
+            await supabase
+              .from('chat_threads')
+              .update({ updated_at: new Date().toISOString() })
+              .eq('id', threadId);
           }
         },
       },

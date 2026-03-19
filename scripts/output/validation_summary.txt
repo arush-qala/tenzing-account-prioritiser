@@ -1,0 +1,122 @@
+======================================================================
+SCORING MODEL VALIDATION REPORT
+Date: 2026-03-17
+Accounts: 60
+======================================================================
+
+======================================================================
+VALIDATION A: Weight Sensitivity (Kendall's tau)
+======================================================================
+
+  Baseline: weights=(0.25, 0.25, 0.15, 0.2, 0.15)
+    # 1  ACC-034  score=100.0
+    # 2  ACC-012  score=96.7
+    # 3  ACC-007  score=76.2
+    # 4  ACC-045  score=75.7
+    # 5  ACC-040  score=74.7
+
+  Revenue-heavy: weights=(0.4, 0.2, 0.1, 0.15, 0.15)
+    # 1  ACC-034  score=100.0
+    # 2  ACC-012  score=92.6
+    # 3  ACC-007  score=75.8
+    # 4  ACC-045  score=75.4
+    # 5  ACC-023  score=74.7
+
+  Engagement-heavy: weights=(0.2, 0.4, 0.1, 0.15, 0.15)
+    # 1  ACC-034  score=100.0
+    # 2  ACC-012  score=98.4
+    # 3  ACC-059  score=78.8
+    # 4  ACC-007  score=78.3
+    # 5  ACC-045  score=78.0
+
+  Urgency-heavy: weights=(0.15, 0.2, 0.15, 0.15, 0.35)
+    # 1  ACC-034  score=100.0
+    # 2  ACC-012  score=98.5
+    # 3  ACC-007  score=76.4
+    # 4  ACC-006  score=75.8
+    # 5  ACC-045  score=75.7
+
+Kendall's tau correlation matrix:
+                              Baseline     Revenue-heavy  Engagement-heavy     Urgency-heavy
+            Baseline             1.000           0.941             0.958             0.971    
+       Revenue-heavy           0.941               1.000           0.929             0.912    
+    Engagement-heavy           0.958             0.929               1.000           0.951    
+       Urgency-heavy           0.971             0.912             0.951               1.000  
+
+RESULT: PASS -- All tau values >= 0.7 (good rank stability)
+
+======================================================================
+VALIDATION B: Calibration Distribution Check
+======================================================================
+
+Raw priority scores:
+  Min:    17.90
+  Max:    70.56
+  Mean:   39.76
+  Std:    13.51
+  Q25:    27.78
+  Q50:    39.47
+  Q75:    51.61
+
+Calibrated scores (min-max normalised to 0-100):
+  Min:    0.00
+  Max:    100.00
+  Mean:   41.50
+  Std:    25.66
+
+OK: Raw score std >= 10 -- reasonable spread
+
+Tier distribution (calibrated):
+      Tier  Count  Actual %  Target %    Status
+--------------------------------------------------
+  Critical      2      3.3%     10.0%        OK
+      High     13     21.7%     20.0%        OK
+    Medium      6     10.0%     35.0%      WARN
+       Low     11     18.3%     25.0%        OK
+   Monitor     28     46.7%     10.0%      WARN
+
+======================================================================
+VALIDATION C: Sanity Checks
+======================================================================
+
+Check 1: Top 5 accounts should include ACC-012, ACC-034, ACC-019
+  Top 5: ACC-034, ACC-012, ACC-007, ACC-045, ACC-040
+  Found in top 5: ACC-012, ACC-034
+  MISS: ACC-019 ranked #14 (score=65.8)
+  RESULT: PASS (at least 2 of 3 in top 5)
+
+Check 2: Bottom 5 should NOT include accounts with negative MRR trend
+  Bottom 5: ACC-016, ACC-010, ACC-037, ACC-021, ACC-026
+  RESULT: PASS (no negative MRR trend in bottom 5)
+
+Check 3: Accounts with contraction > 30% ARR should be Critical or High tier
+  Accounts with >30% contraction: 13
+    ACC-034 contraction=39% tier=Critical [OK]
+    ACC-007 contraction=35% tier=High [OK]
+    ACC-045 contraction=38% tier=High [OK]
+    ACC-040 contraction=31% tier=High [OK]
+    ACC-006 contraction=36% tier=High [OK]
+    ACC-059 contraction=31% tier=High [OK]
+    ACC-023 contraction=43% tier=High [OK]
+    ACC-056 contraction=43% tier=High [OK]
+    ACC-009 contraction=32% tier=High [OK]
+    ACC-038 contraction=39% tier=High [OK]
+    ACC-019 contraction=36% tier=High [OK]
+    ACC-005 contraction=38% tier=Medium [FAIL]
+    ACC-035 contraction=37% tier=Medium [FAIL]
+  RESULT: FAIL (2 accounts in wrong tier)
+
+Check 4: All paused accounts should score above median
+  Paused accounts: 5, median score: 41.0
+    ACC-048 score=54.9 [OK]
+    ACC-051 score=46.3 [OK]
+    ACC-029 score=41.9 [OK]
+    ACC-053 score=34.6 [BELOW]
+    ACC-055 score=32.1 [BELOW]
+  RESULT: FAIL (2 paused accounts below median)
+
+Sanity checks: 2/4 passed
+
+======================================================================
+END OF VALIDATION REPORT
+======================================================================
