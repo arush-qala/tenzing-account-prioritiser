@@ -190,7 +190,7 @@ export function Filters({ owners }: FiltersProps) {
         params.set('search', searchLocal);
       }
       const qs = params.toString();
-      router.push(qs ? `/dashboard?${qs}` : '/dashboard');
+      router.push(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false });
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,14 +205,14 @@ export function Filters({ owners }: FiltersProps) {
         params.set(key, value);
       }
       const qs = params.toString();
-      router.push(qs ? `/dashboard?${qs}` : '/dashboard');
+      router.push(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false });
     },
     [router, searchParams],
   );
 
   const resetFilters = useCallback(() => {
     setSearchLocal('');
-    router.push('/dashboard');
+    router.push('/dashboard', { scroll: false });
   }, [router]);
 
   const applyPreset = useCallback(
@@ -222,7 +222,7 @@ export function Filters({ owners }: FiltersProps) {
         params.set(key, value);
       }
       const qs = params.toString();
-      router.push(qs ? `/dashboard?${qs}` : '/dashboard');
+      router.push(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false });
     },
     [router],
   );

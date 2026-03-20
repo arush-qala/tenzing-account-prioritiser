@@ -184,7 +184,7 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
         params.set(column, value);
       }
       const qs = params.toString();
-      router.push(qs ? `/dashboard?${qs}` : '/dashboard');
+      router.push(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false });
     },
     [router, searchParams],
   );
