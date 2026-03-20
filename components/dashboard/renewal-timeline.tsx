@@ -213,12 +213,6 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart
                   margin={{ top: 10, right: 20, bottom: 10, left: 60 }}
-                  onClick={(e: unknown) => {
-                    const event = e as { activePayload?: Array<{ payload?: ScatterDatum }> } | null;
-                    if (event?.activePayload?.[0]?.payload?.accountId) {
-                      router.push(`/accounts/${event.activePayload[0].payload.accountId}`);
-                    }
-                  }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -285,6 +279,14 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
                   <Scatter
                     data={chartData}
                     shape={<RenderDot />}
+                    onClick={(_data: unknown, _index: unknown, e: React.MouseEvent) => {
+                      // Recharts wraps datum in ScatterPointItem; cast to access payload
+                      const point = _data as { payload?: ScatterDatum } | undefined;
+                      if (point?.payload?.accountId) {
+                        e.stopPropagation();
+                        router.push(`/accounts/${point.payload.accountId}`);
+                      }
+                    }}
                   />
                 </ScatterChart>
               </ResponsiveContainer>
