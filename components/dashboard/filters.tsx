@@ -150,6 +150,17 @@ const FILTER_LABELS: Record<string, Record<string, string>> = {
 };
 
 // ---------------------------------------------------------------------------
+// Helper: show filter label when value is "all" (base-ui renders raw value)
+// ---------------------------------------------------------------------------
+
+function FilterSelectValue({ value, label }: { value: string; label: string }) {
+  if (value === 'all') {
+    return <span className="flex flex-1 text-left text-muted-foreground">{label}</span>;
+  }
+  return <SelectValue />;
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -274,7 +285,7 @@ export function Filters({ owners }: FiltersProps) {
           onValueChange={(val) => updateParam('region', val ?? 'all')}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Region" />
+            <FilterSelectValue value={filters.region} label="Region" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Region</SelectItem>
@@ -292,7 +303,7 @@ export function Filters({ owners }: FiltersProps) {
           onValueChange={(val) => updateParam('owner', val ?? 'all')}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Owner" />
+            <FilterSelectValue value={filters.owner} label="Owner" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Owner</SelectItem>
@@ -310,7 +321,7 @@ export function Filters({ owners }: FiltersProps) {
           onValueChange={(val) => updateParam('lifecycle', val ?? 'all')}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Lifecycle Stage" />
+            <FilterSelectValue value={filters.lifecycle} label="Lifecycle Stage" />
           </SelectTrigger>
           <SelectContent>
             {LIFECYCLE_OPTIONS.map((opt) => (
@@ -327,7 +338,7 @@ export function Filters({ owners }: FiltersProps) {
           onValueChange={(val) => updateParam('renewalRange', val ?? 'all')}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Renewal" />
+            <FilterSelectValue value={filters.renewalRange} label="Renewal" />
           </SelectTrigger>
           <SelectContent>
             {RENEWAL_RANGE_OPTIONS.map((opt) => (
@@ -344,7 +355,7 @@ export function Filters({ owners }: FiltersProps) {
           onValueChange={(val) => updateParam('arrRange', val ?? 'all')}
         >
           <SelectTrigger>
-            <SelectValue placeholder="ARR" />
+            <FilterSelectValue value={filters.arrRange} label="ARR" />
           </SelectTrigger>
           <SelectContent>
             {ARR_RANGE_OPTIONS.map((opt) => (

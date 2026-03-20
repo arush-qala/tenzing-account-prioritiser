@@ -2,9 +2,9 @@ import Link from 'next/link';
 import { ArrowLeft, User, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TierBadge } from '@/components/ui/tier-badge';
+import { TypeBadge } from '@/components/ui/type-badge';
 import { DataQualityBadge } from '@/components/ui/data-quality-badge';
 import { AnomalyBadge } from '@/components/ui/anomaly-badge';
-import { formatType } from '@/lib/utils/format';
 import type { Account, ScoringResult } from '@/lib/scoring/types';
 
 // ---------------------------------------------------------------------------
@@ -15,23 +15,6 @@ interface AccountHeaderProps {
   account: Account;
   result: ScoringResult;
 }
-
-// ---------------------------------------------------------------------------
-// Priority type styles (mirrors priority-list.tsx)
-// ---------------------------------------------------------------------------
-
-const TYPE_STYLES: Record<ScoringResult['priorityType'], string> = {
-  churn_risk:
-    'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400',
-  renewal_urgent:
-    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400',
-  expansion_opportunity:
-    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400',
-  mixed_signals:
-    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400',
-  stable:
-    'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/30 dark:text-slate-400',
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -80,11 +63,7 @@ export function AccountHeader({ account, result }: AccountHeaderProps) {
         {/* Right side: tier, type, data quality, anomaly */}
         <div className="flex flex-wrap items-center gap-2">
           <TierBadge tier={result.priorityTier} size="md" />
-          <Badge
-            className={`border text-xs ${TYPE_STYLES[result.priorityType]}`}
-          >
-            {formatType(result.priorityType)}
-          </Badge>
+          <TypeBadge type={result.priorityType} />
           <DataQualityBadge score={account.data_completeness_score} />
           <AnomalyBadge
             isAnomaly={account.is_anomaly === 1}

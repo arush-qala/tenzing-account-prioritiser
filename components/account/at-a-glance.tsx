@@ -1,21 +1,13 @@
 'use client';
 
-import type { Account, ScoringResult } from '@/lib/scoring/types';
+import type { Account, ScoringResult, PriorityTier } from '@/lib/scoring/types';
 import { formatCurrency } from '@/lib/utils/format';
-import { Badge } from '@/components/ui/badge';
+import { TierBadge } from '@/components/ui/tier-badge';
 
 interface AtAGlanceProps {
   account: Account;
   result: ScoringResult;
 }
-
-const TIER_COLORS: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  low: 'bg-blue-100 text-blue-700',
-  monitor: 'bg-slate-100 text-slate-700',
-};
 
 export function AtAGlance({ account, result }: AtAGlanceProps) {
   const metrics = [
@@ -68,12 +60,7 @@ export function AtAGlance({ account, result }: AtAGlanceProps) {
                 {metric.value}
               </span>
               {'badge' in metric && metric.badge && (
-                <Badge
-                  variant="secondary"
-                  className={`text-[9px] px-1 py-0 ${TIER_COLORS[metric.badge] || ''}`}
-                >
-                  {metric.badge}
-                </Badge>
+                <TierBadge tier={metric.badge as PriorityTier} size="sm" />
               )}
             </div>
           </div>

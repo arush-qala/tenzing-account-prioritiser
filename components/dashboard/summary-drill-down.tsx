@@ -10,15 +10,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
-
-const TIER_COLORS: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  low: 'bg-blue-100 text-blue-700',
-  monitor: 'bg-slate-100 text-slate-700',
-};
+import { TierBadge } from '@/components/ui/tier-badge';
 
 interface SummaryDrillDownProps {
   open: boolean;
@@ -66,12 +58,7 @@ export function SummaryDrillDown({
                       {account.account_name}
                     </p>
                     <div className="mt-0.5 flex items-center gap-2">
-                      <Badge
-                        variant="secondary"
-                        className={`text-[10px] px-1.5 py-0 ${TIER_COLORS[result.priorityTier] || ''}`}
-                      >
-                        {result.priorityTier}
-                      </Badge>
+                      <TierBadge tier={result.priorityTier} size="sm" />
                       {account.days_to_renewal <= 90 && (
                         <span className="text-[10px] text-muted-foreground">
                           {account.days_to_renewal}d to renewal

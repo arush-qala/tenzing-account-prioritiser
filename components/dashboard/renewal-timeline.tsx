@@ -47,13 +47,7 @@ interface ScatterDatum {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TIER_COLORS: Record<PriorityTier, string> = {
-  critical: '#ef4444',
-  high: '#f97316',
-  medium: '#eab308',
-  low: '#3b82f6',
-  monitor: '#9ca3af',
-};
+import { TIER_HEX } from '@/lib/ui/tier-type-styles';
 
 // Y-axis mapping: Critical at top (4), Monitor at bottom (0)
 const TIER_Y: Record<PriorityTier, number> = {
@@ -160,7 +154,7 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
     name: account.account_name,
     arr: account.arr_gbp,
     tier: result.priorityTier,
-    fill: TIER_COLORS[result.priorityTier],
+    fill: TIER_HEX[result.priorityTier],
     accountId: account.account_id,
   }));
 
@@ -304,7 +298,7 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
                 <div key={tier} className="flex items-center gap-1.5">
                   <span
                     className="inline-block size-2.5 rounded-full"
-                    style={{ backgroundColor: TIER_COLORS[tier] }}
+                    style={{ backgroundColor: TIER_HEX[tier] }}
                   />
                   <span className="text-[10px] capitalize text-muted-foreground">
                     {tier}

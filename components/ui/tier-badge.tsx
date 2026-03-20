@@ -1,17 +1,10 @@
 import { Badge } from '@/components/ui/badge'
 import type { PriorityTier } from '@/lib/scoring/types'
+import { TIER_BADGE_CLASSES, TIER_LABELS } from '@/lib/ui/tier-type-styles'
 
 export interface TierBadgeProps {
   tier: PriorityTier
   size?: 'sm' | 'md'
-}
-
-const tierStyles: Record<PriorityTier, string> = {
-  critical: 'bg-red-100 text-red-800 border-red-200',
-  high: 'bg-orange-100 text-orange-800 border-orange-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  low: 'bg-blue-100 text-blue-800 border-blue-200',
-  monitor: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 const sizeStyles: Record<NonNullable<TierBadgeProps['size']>, string> = {
@@ -19,17 +12,13 @@ const sizeStyles: Record<NonNullable<TierBadgeProps['size']>, string> = {
   md: 'text-xs px-2 py-0.5',
 }
 
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
 export function TierBadge({ tier, size = 'md' }: TierBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className={`${tierStyles[tier]} ${sizeStyles[size]} font-semibold`}
+      className={`${TIER_BADGE_CLASSES[tier]} ${sizeStyles[size]} font-semibold`}
     >
-      {capitalize(tier)}
+      {TIER_LABELS[tier]}
     </Badge>
   )
 }

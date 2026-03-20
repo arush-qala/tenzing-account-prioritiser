@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipTrigger,
@@ -19,6 +18,8 @@ import {
 } from '@/components/ui/tooltip';
 import { AlertTriangle, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TierBadge } from '@/components/ui/tier-badge';
+import { TypeBadge } from '@/components/ui/type-badge';
 import { formatCurrency } from '@/lib/utils/format';
 import { getFiltersFromParams } from '@/components/dashboard/filters';
 import {
@@ -31,42 +32,6 @@ import type {
   PriorityTier,
   PriorityType,
 } from '@/lib/scoring/types';
-
-// ---------------------------------------------------------------------------
-// Tier / Type colour mappings
-// ---------------------------------------------------------------------------
-
-const TIER_CLASSES: Record<PriorityTier, string> = {
-  critical:
-    'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400',
-  high: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400',
-  medium:
-    'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400',
-  low: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400',
-  monitor:
-    'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400',
-};
-
-const TYPE_CLASSES: Record<PriorityType, string> = {
-  churn_risk:
-    'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400',
-  renewal_urgent:
-    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400',
-  expansion_opportunity:
-    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400',
-  mixed_signals:
-    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400',
-  stable:
-    'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/30 dark:text-slate-400',
-};
-
-const TYPE_LABELS: Record<PriorityType, string> = {
-  churn_risk: 'Churn Risk',
-  renewal_urgent: 'Renewal Urgent',
-  expansion_opportunity: 'Expansion',
-  mixed_signals: 'Mixed Signals',
-  stable: 'Stable',
-};
 
 // ---------------------------------------------------------------------------
 // Ordinal sort maps
@@ -355,34 +320,25 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
 
   return (
     <TooltipProvider>
-      {/* Legend */}
-      <details className="mb-3 text-xs text-muted-foreground">
-        <summary className="cursor-pointer font-medium hover:text-foreground">
-          Legend: Tiers &amp; Types
-        </summary>
-        <div className="mt-2 grid grid-cols-1 gap-3 rounded-md border bg-card p-3 sm:grid-cols-2">
-          <div>
-            <p className="mb-1 font-semibold text-foreground">Priority Tiers</p>
-            <ul className="space-y-0.5">
-              <li><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5" />Critical: Immediate intervention needed (score 80+)</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5" />High: Requires proactive attention (score 65-79)</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5" />Medium: Monitor closely, act if signals worsen (score 50-64)</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />Low: Stable, routine check-ins (score 35-49)</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1.5" />Monitor: Healthy, no action needed (score &lt;35)</li>
-            </ul>
-          </div>
-          <div>
-            <p className="mb-1 font-semibold text-foreground">Priority Types</p>
-            <ul className="space-y-0.5">
-              <li><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5" />Churn Risk: Declining health + negative signals</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5" />Renewal Urgent: Renewal soon + poor health</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5" />Expansion Opportunity: Strong pipeline + positive signals</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />Mixed Signals: Contradicting indicators need investigation</li>
-              <li><span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1.5" />Stable: Healthy account, no immediate action</li>
-            </ul>
-          </div>
+      {/* Legend — always visible, uses real badge components */}
+      <div className="mb-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-md border bg-card/50 px-4 py-2.5 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
+            Tiers
+          </span>
+          {(['critical', 'high', 'medium', 'low', 'monitor'] as PriorityTier[]).map((tier) => (
+            <TierBadge key={tier} tier={tier} size="sm" />
+          ))}
         </div>
-      </details>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
+            Types
+          </span>
+          {(['churn_risk', 'renewal_urgent', 'expansion_opportunity', 'mixed_signals', 'stable'] as PriorityType[]).map((type) => (
+            <TypeBadge key={type} type={type} size="sm" />
+          ))}
+        </div>
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -489,19 +445,10 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
                   {result.calibratedScore.toFixed(1)}
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={`border text-xs ${TIER_CLASSES[result.priorityTier]}`}
-                  >
-                    {result.priorityTier.charAt(0).toUpperCase() +
-                      result.priorityTier.slice(1)}
-                  </Badge>
+                  <TierBadge tier={result.priorityTier} size="sm" />
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={`border text-xs ${TYPE_CLASSES[result.priorityType]}`}
-                  >
-                    {TYPE_LABELS[result.priorityType]}
-                  </Badge>
+                  <TypeBadge type={result.priorityType} size="sm" />
                 </TableCell>
                 <TableCell>
                   <span
