@@ -261,6 +261,29 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
       if (conf !== filters.confidence) return false;
     }
     if (
+      filters.lifecycle !== 'all' &&
+      account.lifecycle_stage !== filters.lifecycle
+    ) {
+      return false;
+    }
+    if (filters.renewalRange !== 'all') {
+      const days = account.days_to_renewal;
+      switch (filters.renewalRange) {
+        case '0-30': if (days > 30) return false; break;
+        case '30-60': if (days <= 30 || days > 60) return false; break;
+        case '60-90': if (days <= 60 || days > 90) return false; break;
+        case '90+': if (days <= 90) return false; break;
+      }
+    }
+    if (filters.arrRange !== 'all') {
+      const arr = account.arr_gbp;
+      switch (filters.arrRange) {
+        case '0-50000': if (arr >= 50000) return false; break;
+        case '50000-150000': if (arr < 50000 || arr >= 150000) return false; break;
+        case '150000+': if (arr < 150000) return false; break;
+      }
+    }
+    if (
       filters.search &&
       !account.account_name
         .toLowerCase()

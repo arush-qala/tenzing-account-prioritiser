@@ -44,9 +44,10 @@ When making changes to this project across conversations, update this file with:
 |------|-------|
 | Scoring engine | `lib/scoring/engine.ts`, `weights.ts`, `signals.ts`, `contradictions.ts`, `calibration.ts` |
 | AI prompts & analysis | `lib/ai/prompts.ts`, `analyse-account.ts`, `counterfactuals.ts`, `portfolio-insights.ts`, `chat.ts` |
-| API routes | `app/api/analyse/`, `analyse-all/`, `chat/`, `actions/`, `tasks/`, `comments/`, `activity/`, `audio/`, `voice-token/`, `portfolio-insights/` |
+| API routes | `app/api/analyse/`, `analyse-all/`, `chat/`, `actions/`, `tasks/`, `comments/`, `activity/`, `accuracy/`, `audio/`, `voice-token/`, `portfolio-insights/` |
 | Dashboard | `app/dashboard/page.tsx`, `components/dashboard/` |
 | Account detail | `app/accounts/[id]/page.tsx`, `components/account/` |
+| Nav features | `components/notification-bell.tsx`, `components/ai-accuracy-indicator.tsx` |
 | My Actions | `app/actions/page.tsx` |
 | Auth | `app/login/page.tsx`, `app/auth/callback/route.ts`, `lib/supabase/`, `middleware.ts` |
 | Voice (ElevenLabs) | `components/account/voice-chat.tsx`, `app/api/voice-token/route.ts` |
@@ -67,14 +68,17 @@ When making changes to this project across conversations, update this file with:
 ## Features Built
 
 - Google OAuth + email sign-up/sign-in
-- Dashboard with portfolio summary, renewal timeline, activity feed, accuracy tracker
-- Priority list table with per-row Analyse button, sorting, filtering
-- Account detail page with scoring waterfall, metrics, AI reasoning, recommended actions, counterfactuals, contradictions, notes
+- Dashboard with portfolio summary (clickable cards with Sheet drill-down), renewal timeline (tier swim lanes scatter chart with time-range toggle), AI portfolio insights (collapsible 2-col sections with coloured borders)
+- Priority list table with per-row Analyse button, sorting, enhanced filtering (lifecycle stage, renewal range, ARR range, quick-filter presets)
+- Account detail page restructured as accordion sections with "At a Glance" metric strip: Score Decomposition + AI Analysis expanded by default, Notes/What-If/Comments collapsed
+- Notification bell in nav (activity feed relocated from dashboard)
+- AI accuracy badge in nav (compact indicator with popover donut chart)
 - One-click action adoption from AI recommendations → My Actions page (to-do list)
 - Per-account comments with user attribution
 - Text-based AI chat (Claude, streaming, side pane)
 - ElevenLabs voice chat (Conversational AI Agent, real-time)
 - Feature flag: `NEXT_PUBLIC_ENABLE_VOICE=true/false` controls all voice features
+- Page-level guidance text (titles, subtitles, interaction hints) on all pages
 
 ## Environment Variables
 

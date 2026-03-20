@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import {
   Sparkles,
   ChevronDown,
-  ChevronUp,
+  ChevronRight,
   RefreshCw,
   Loader2,
   Lightbulb,
@@ -36,11 +36,60 @@ interface AiInsightsPanelProps {
 }
 
 // ---------------------------------------------------------------------------
+// Collapsible insight section
+// ---------------------------------------------------------------------------
+
+interface InsightSectionProps {
+  title: string;
+  icon: React.ElementType;
+  borderColor: string;
+  iconColor: string;
+  count: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function InsightSection({
+  title,
+  icon: Icon,
+  borderColor,
+  iconColor,
+  count,
+  defaultOpen = false,
+  children,
+}: InsightSectionProps) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className={`rounded-md border-l-4 ${borderColor} border bg-card`}>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        {open ? (
+          <ChevronDown className="size-3 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-3 text-muted-foreground" />
+        )}
+        <Icon className={`size-3.5 ${iconColor}`} />
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">
+          {title}
+        </span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {count}
+        </span>
+      </button>
+      {open && <div className="px-4 pb-3">{children}</div>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
-  const [expanded, setExpanded] = useState(true);
   const [loading, setLoading] = useState(false);
   const [localInsights, setLocalInsights] =
     useState<PortfolioInsightsData | null>(insights);
@@ -56,9 +105,7 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
         throw new Error(body.error ?? 'Failed to generate insights');
       }
       const data = await res.json();
-      // The API returns the full row; insights are in the `insights` field
-      const parsed =
-        data.insights as PortfolioInsightsData | undefined;
+      const parsed = data.insights as PortfolioInsightsData | undefined;
       if (parsed) {
         setLocalInsights(parsed);
       }
@@ -86,7 +133,7 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
         <CardContent>
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <p className="text-sm text-muted-foreground">
-              Run AI Analysis to generate portfolio-level insights
+              Run AI analysis to generate portfolio-level insights
             </p>
             {error && (
               <p className="text-xs text-red-500">{error}</p>
@@ -116,120 +163,107 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-purple-500" />
           <CardTitle className="text-sm font-medium">
             AI Portfolio Insights
           </CardTitle>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={generateInsights}
-            disabled={loading}
-            aria-label="Regenerate insights"
-          >
-            {loading ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <RefreshCw className="size-3" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => setExpanded(!expanded)}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
-          >
-            {expanded ? (
-              <ChevronUp className="size-3" />
-            ) : (
-              <ChevronDown className="size-3" />
-            )}
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={generateInsights}
+          disabled={loading}
+          aria-label="Regenerate insights"
+        >
+          {loading ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : (
+            <RefreshCw className="size-3" />
+          )}
+        </Button>
       </CardHeader>
 
-      {expanded && (
-        <CardContent>
-          {error && (
-            <p className="mb-3 text-xs text-red-500">{error}</p>
-          )}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-4">
-            {/* Themes */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <Lightbulb className="size-3.5 text-amber-500" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Key Themes
-                </h4>
-              </div>
-              <ul className="space-y-1">
-                {displayInsights.themes.map((theme, i) => (
-                  <li key={i} className="text-sm leading-snug">
-                    {theme}
-                  </li>
-                ))}
-              </ul>
-            </div>
+      <CardContent>
+        {error && (
+          <p className="mb-3 text-xs text-red-500">{error}</p>
+        )}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {/* Urgent Actions — expanded by default, red border */}
+          <InsightSection
+            title="Urgent Actions"
+            icon={Zap}
+            borderColor="border-l-red-500"
+            iconColor="text-red-500"
+            count={displayInsights.urgent_actions.length}
+            defaultOpen
+          >
+            <ul className="space-y-1.5">
+              {displayInsights.urgent_actions.map((action, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm leading-snug">
+                  <span className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-red-400" />
+                  {typeof action === 'string' ? action : (action as { action?: string }).action ?? JSON.stringify(action)}
+                </li>
+              ))}
+            </ul>
+          </InsightSection>
 
-            {/* Owner Patterns */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <UserCircle className="size-3.5 text-blue-500" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Owner Patterns
-                </h4>
-              </div>
-              <ul className="space-y-1">
-                {displayInsights.owner_patterns.map((op, i) => (
-                  <li key={i} className="text-sm leading-snug">
-                    <span className="font-medium">{op.owner}:</span>{' '}
-                    {op.pattern}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* Key Themes — collapsed by default, amber border */}
+          <InsightSection
+            title="Key Themes"
+            icon={Lightbulb}
+            borderColor="border-l-amber-500"
+            iconColor="text-amber-500"
+            count={displayInsights.themes.length}
+          >
+            <ul className="space-y-1.5">
+              {displayInsights.themes.map((theme, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm leading-snug">
+                  <span className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-amber-400" />
+                  {theme}
+                </li>
+              ))}
+            </ul>
+          </InsightSection>
 
-            {/* Segment Patterns */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <BarChart3 className="size-3.5 text-emerald-500" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Segment Patterns
-                </h4>
-              </div>
-              <ul className="space-y-1">
-                {displayInsights.segment_patterns.map((sp, i) => (
-                  <li key={i} className="text-sm leading-snug">
-                    <span className="font-medium">{sp.segment}:</span>{' '}
-                    {sp.pattern}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* Owner Patterns — collapsed by default, blue border */}
+          <InsightSection
+            title="Owner Patterns"
+            icon={UserCircle}
+            borderColor="border-l-blue-500"
+            iconColor="text-blue-500"
+            count={displayInsights.owner_patterns.length}
+          >
+            <dl className="space-y-2">
+              {displayInsights.owner_patterns.map((op, i) => (
+                <div key={i}>
+                  <dt className="text-sm font-medium">{op.owner}</dt>
+                  <dd className="text-sm text-muted-foreground leading-snug">{op.pattern}</dd>
+                </div>
+              ))}
+            </dl>
+          </InsightSection>
 
-            {/* Urgent Actions */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <Zap className="size-3.5 text-red-500" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Urgent Actions
-                </h4>
-              </div>
-              <ul className="space-y-1">
-                {displayInsights.urgent_actions.map((action, i) => (
-                  <li key={i} className="text-sm leading-snug">
-                    {typeof action === 'string' ? action : (action as { action?: string }).action ?? JSON.stringify(action)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      )}
+          {/* Segment Patterns — collapsed by default, emerald border */}
+          <InsightSection
+            title="Segment Patterns"
+            icon={BarChart3}
+            borderColor="border-l-emerald-500"
+            iconColor="text-emerald-500"
+            count={displayInsights.segment_patterns.length}
+          >
+            <dl className="space-y-2">
+              {displayInsights.segment_patterns.map((sp, i) => (
+                <div key={i}>
+                  <dt className="text-sm font-medium">{sp.segment}</dt>
+                  <dd className="text-sm text-muted-foreground leading-snug">{sp.pattern}</dd>
+                </div>
+              ))}
+            </dl>
+          </InsightSection>
+        </div>
+      </CardContent>
     </Card>
   );
 }

@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ScatterChart,
   Scatter,
@@ -17,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { CalendarClock } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/format';
 import type { Account, ScoringResult, PriorityTier } from '@/lib/scoring/types';
@@ -37,6 +40,7 @@ interface ScatterDatum {
   arr: number;
   tier: PriorityTier;
   fill: string;
+  accountId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,6 +54,26 @@ const TIER_COLORS: Record<PriorityTier, string> = {
   low: '#3b82f6',
   monitor: '#9ca3af',
 };
+
+// Y-axis mapping: Critical at top (4), Monitor at bottom (0)
+const TIER_Y: Record<PriorityTier, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+  monitor: 0,
+};
+
+const TIER_LABELS: Record<number, string> = {
+  0: 'Monitor',
+  1: 'Low',
+  2: 'Medium',
+  3: 'High',
+  4: 'Critical',
+};
+
+const RANGE_OPTIONS = [30, 60, 90, 180] as const;
+type RangeOption = (typeof RANGE_OPTIONS)[number];
 
 // ---------------------------------------------------------------------------
 // Custom tooltip
@@ -79,12 +103,13 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <p className="text-xs capitalize text-muted-foreground">
         Tier: {item.tier}
       </p>
+      <p className="mt-1 text-[10px] text-blue-600">Click to view account</p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Custom dot renderer for consistent colouring
+// Custom dot renderer
 // ---------------------------------------------------------------------------
 
 interface DotProps {
@@ -95,7 +120,6 @@ interface DotProps {
 
 function RenderDot({ cx, cy, payload }: DotProps) {
   if (cx == null || cy == null || !payload) return null;
-  // Scale radius by ARR: min 6px, max 18px
   const minR = 6;
   const maxR = 18;
   const arrClamped = Math.max(5000, Math.min(payload.arr, 500000));
@@ -110,6 +134,7 @@ function RenderDot({ cx, cy, payload }: DotProps) {
       fillOpacity={0.7}
       stroke={payload.fill}
       strokeWidth={1.5}
+      className="cursor-pointer"
     />
   );
 }
@@ -119,25 +144,24 @@ function RenderDot({ cx, cy, payload }: DotProps) {
 // ---------------------------------------------------------------------------
 
 export function RenewalTimeline({ results }: RenewalTimelineProps) {
-  // Filter to accounts renewing within 90 days
+  const router = useRouter();
+  const [range, setRange] = useState<RangeOption>(90);
+
+  // Filter to accounts renewing within selected range
   const upcoming = results.filter(
-    ({ account }) => account.days_to_renewal >= 0 && account.days_to_renewal <= 90,
+    ({ account }) => account.days_to_renewal >= 0 && account.days_to_renewal <= range,
   );
 
-  // Sort by days_to_renewal ascending
-  const sorted = [...upcoming].sort(
-    (a, b) => a.account.days_to_renewal - b.account.days_to_renewal,
-  );
-
-  // Build scatter data — use a fixed y=1 to show dots on a single horizontal line
-  const chartData: ScatterDatum[] = sorted.map(({ account, result }) => ({
+  // Build scatter data with tier swim lanes
+  const chartData: ScatterDatum[] = upcoming.map(({ account, result }) => ({
     x: account.days_to_renewal,
-    y: 1,
+    y: TIER_Y[result.priorityTier],
     z: account.arr_gbp,
     name: account.account_name,
     arr: account.arr_gbp,
     tier: result.priorityTier,
     fill: TIER_COLORS[result.priorityTier],
+    accountId: account.account_id,
   }));
 
   // Summary stats
@@ -149,39 +173,69 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
     0,
   );
 
+  // Generate tick values based on range
+  const xTicks: number[] = [];
+  for (let i = 0; i <= range; i += range <= 60 ? 15 : 30) {
+    xTicks.push(i);
+  }
+  if (xTicks[xTicks.length - 1] !== range) xTicks.push(range);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
           <CalendarClock className="size-4 text-blue-500" />
           <CardTitle className="text-sm font-medium">
-            Renewal Timeline (Next 90 Days)
+            Renewal Timeline
           </CardTitle>
+          <span className="text-xs text-muted-foreground">
+            {upcoming.length} account{upcoming.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        {/* Time range toggle */}
+        <div className="flex items-center gap-1">
+          {RANGE_OPTIONS.map((opt) => (
+            <Button
+              key={opt}
+              variant={range === opt ? 'secondary' : 'ghost'}
+              size="xs"
+              className="text-xs px-2"
+              onClick={() => setRange(opt)}
+            >
+              {opt}d
+            </Button>
+          ))}
         </div>
       </CardHeader>
       <CardContent>
         {upcoming.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            No renewals in the next 90 days
+            No renewals in the next {range} days
           </p>
         ) : (
           <div className="flex flex-col gap-3">
-            {/* Scatter chart */}
-            <div className="h-[140px] w-full">
+            {/* Scatter chart with tier swim lanes */}
+            <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart
-                  margin={{ top: 10, right: 20, bottom: 10, left: 10 }}
+                  margin={{ top: 10, right: 20, bottom: 10, left: 60 }}
+                  onClick={(e: unknown) => {
+                    const event = e as { activePayload?: Array<{ payload?: ScatterDatum }> } | null;
+                    if (event?.activePayload?.[0]?.payload?.accountId) {
+                      router.push(`/accounts/${event.activePayload[0].payload.accountId}`);
+                    }
+                  }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    horizontal={false}
+                    strokeOpacity={0.3}
                   />
                   <XAxis
                     type="number"
                     dataKey="x"
-                    domain={[0, 90]}
-                    ticks={[0, 15, 30, 45, 60, 75, 90]}
+                    domain={[0, range]}
+                    ticks={xTicks}
                     tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
@@ -196,8 +250,13 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
                   <YAxis
                     type="number"
                     dataKey="y"
-                    domain={[0, 2]}
-                    hide
+                    domain={[-0.5, 4.5]}
+                    ticks={[0, 1, 2, 3, 4]}
+                    tickFormatter={(val: number) => TIER_LABELS[val] ?? ''}
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={55}
                   />
                   <ZAxis
                     type="number"
@@ -215,17 +274,19 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
                       fill: '#9ca3af',
                     }}
                   />
-                  <ReferenceLine
-                    x={60}
-                    stroke="#d1d5db"
-                    strokeDasharray="4 4"
-                    label={{
-                      value: '60d',
-                      position: 'top',
-                      fontSize: 10,
-                      fill: '#9ca3af',
-                    }}
-                  />
+                  {range >= 60 && (
+                    <ReferenceLine
+                      x={60}
+                      stroke="#d1d5db"
+                      strokeDasharray="4 4"
+                      label={{
+                        value: '60d',
+                        position: 'top',
+                        fontSize: 10,
+                        fill: '#9ca3af',
+                      }}
+                    />
+                  )}
                   <RechartsTooltip content={<CustomTooltip />} />
                   <Scatter
                     data={chartData}
@@ -236,11 +297,11 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
             </div>
 
             {/* Tier legend */}
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
               {(
                 ['critical', 'high', 'medium', 'low', 'monitor'] as PriorityTier[]
               ).map((tier) => (
-                <div key={tier} className="flex items-center gap-1">
+                <div key={tier} className="flex items-center gap-1.5">
                   <span
                     className="inline-block size-2.5 rounded-full"
                     style={{ backgroundColor: TIER_COLORS[tier] }}
@@ -250,6 +311,9 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
                   </span>
                 </div>
               ))}
+              <span className="text-[10px] text-muted-foreground ml-2">
+                Bubble size = ARR
+              </span>
             </div>
 
             {/* Summary */}

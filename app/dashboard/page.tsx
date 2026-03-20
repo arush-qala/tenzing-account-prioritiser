@@ -5,9 +5,7 @@ import type { Account } from '@/lib/scoring/types';
 import type { PortfolioInsightsData } from '@/components/dashboard/ai-insights-panel';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { AiInsightsPanel } from '@/components/dashboard/ai-insights-panel';
-import { AccuracyTracker } from '@/components/dashboard/accuracy-tracker';
 import { RenewalTimeline } from '@/components/dashboard/renewal-timeline';
-import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { Filters } from '@/components/dashboard/filters';
 import { PriorityList } from '@/components/dashboard/priority-list';
 import { NavHeader } from '@/components/nav-header';
@@ -61,16 +59,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // ---- Fetch all actions for accuracy tracker ----
-  const { data: allActions } = await supabase
-    .from('actions')
-    .select('ai_accuracy_rating, created_at');
-
-  const actions = (allActions ?? []) as Array<{
-    ai_accuracy_rating: string | null;
-    created_at: string;
-  }>;
-
   // ---- Extract unique owners for filter dropdown ----
   const ownersSet = new Set<string>();
   for (const account of accounts) {
@@ -89,33 +77,56 @@ export default async function DashboardPage() {
       {/* Main content */}
       <main className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col gap-6">
+          {/* Page header */}
+          <div>
+            <h1 className="text-lg font-semibold">Portfolio Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              Overview of {accounts.length} accounts across your portfolio. Click any summary card for details.
+            </p>
+          </div>
+
           {/* Summary cards */}
           <PortfolioSummary results={scoredResults} />
 
-          {/* Renewal Timeline + Activity Feed + Accuracy Tracker */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-              <RenewalTimeline results={scoredResults} />
+          {/* Renewal Timeline — full width */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Upcoming Renewals
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Accounts renewing soon, sized by ARR, positioned by risk tier. Click any dot to view account.
+              </p>
             </div>
-            <div className="lg:col-span-1">
-              <ActivityFeed />
-            </div>
-            <div className="lg:col-span-1">
-              <AccuracyTracker actions={actions} />
-            </div>
+            <RenewalTimeline results={scoredResults} />
           </div>
 
           {/* AI Insights */}
-          <AiInsightsPanel insights={portfolioInsights} />
+          <div>
+            <div className="mb-2">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                AI Portfolio Insights
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                AI-generated patterns across your portfolio. Click Refresh to regenerate.
+              </p>
+            </div>
+            <AiInsightsPanel insights={portfolioInsights} />
+          </div>
 
           <Separator />
 
           {/* Filters + Table */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                Priority List
-              </h2>
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  Priority List
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Sorted by priority score. Click any row to view full account details.
+                </p>
+              </div>
               <div className="flex items-center gap-4">
                 <span className="text-xs text-muted-foreground">
                   {accounts.length} accounts

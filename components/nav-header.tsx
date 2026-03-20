@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { LogOut, LayoutDashboard, CheckSquare, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NotificationBell } from '@/components/notification-bell';
+import { AiAccuracyIndicator } from '@/components/ai-accuracy-indicator';
 
 interface NavHeaderProps {
   userEmail?: string;
@@ -62,6 +64,8 @@ export function NavHeader({ userEmail }: NavHeaderProps) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          <AiAccuracyIndicator />
+          <NotificationBell />
           {userEmail && (
             <span className="text-sm text-muted-foreground">{userEmail}</span>
           )}

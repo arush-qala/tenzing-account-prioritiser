@@ -26,6 +26,9 @@ export interface FilterValues {
   tier: string;
   search: string;
   confidence: string;
+  lifecycle: string;
+  renewalRange: string;
+  arrRange: string;
 }
 
 export function getFiltersFromParams(
@@ -39,6 +42,9 @@ export function getFiltersFromParams(
     tier: searchParams.get('tier') ?? 'all',
     search: searchParams.get('search') ?? '',
     confidence: searchParams.get('confidence') ?? 'all',
+    lifecycle: searchParams.get('lifecycle') ?? 'all',
+    renewalRange: searchParams.get('renewalRange') ?? 'all',
+    arrRange: searchParams.get('arrRange') ?? 'all',
   };
 }
 
@@ -55,6 +61,51 @@ interface FiltersProps {
 // ---------------------------------------------------------------------------
 
 const REGIONS = ['all', 'US', 'EU', 'UK'] as const;
+
+const LIFECYCLE_OPTIONS = [
+  { value: 'all', label: 'Lifecycle Stage' },
+  { value: 'New', label: 'New' },
+  { value: 'Onboarding', label: 'Onboarding' },
+  { value: 'Growing', label: 'Growing' },
+  { value: 'Mature', label: 'Mature' },
+  { value: 'At Risk', label: 'At Risk' },
+  { value: 'Churning', label: 'Churning' },
+];
+
+const RENEWAL_RANGE_OPTIONS = [
+  { value: 'all', label: 'Renewal' },
+  { value: '0-30', label: '< 30 days' },
+  { value: '30-60', label: '30-60 days' },
+  { value: '60-90', label: '60-90 days' },
+  { value: '90+', label: '> 90 days' },
+];
+
+const ARR_RANGE_OPTIONS = [
+  { value: 'all', label: 'ARR' },
+  { value: '0-50000', label: '< £50K' },
+  { value: '50000-150000', label: '£50K-£150K' },
+  { value: '150000+', label: '> £150K' },
+];
+
+// Quick filter presets
+const PRESETS: Array<{ label: string; params: Record<string, string> }> = [
+  {
+    label: 'Critical Only',
+    params: { tier: 'critical' },
+  },
+  {
+    label: 'Renewals < 30d',
+    params: { renewalRange: '0-30' },
+  },
+  {
+    label: 'Churn Risks',
+    params: { type: 'churn_risk' },
+  },
+  {
+    label: 'Expansion',
+    params: { type: 'expansion_opportunity' },
+  },
+];
 
 const FILTER_LABELS: Record<string, Record<string, string>> = {
   segment: {
@@ -77,6 +128,25 @@ const FILTER_LABELS: Record<string, Record<string, string>> = {
     stable: 'Stable',
   },
   confidence: { high: 'High', medium: 'Medium', low: 'Low' },
+  lifecycle: {
+    New: 'New',
+    Onboarding: 'Onboarding',
+    Growing: 'Growing',
+    Mature: 'Mature',
+    'At Risk': 'At Risk',
+    Churning: 'Churning',
+  },
+  renewalRange: {
+    '0-30': '< 30d',
+    '30-60': '30-60d',
+    '60-90': '60-90d',
+    '90+': '> 90d',
+  },
+  arrRange: {
+    '0-50000': '< £50K',
+    '50000-150000': '£50K-£150K',
+    '150000+': '> £150K',
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -88,16 +158,14 @@ export function Filters({ owners }: FiltersProps) {
   const searchParams = useSearchParams();
   const filters = getFiltersFromParams(searchParams);
 
-  // Debounced search: local state for instant input, URL updates after 300ms
+  // Debounced search
   const [searchLocal, setSearchLocal] = useState(filters.search);
   const isMount = useRef(true);
 
-  // Sync local state when URL changes externally (e.g. reset click)
   useEffect(() => {
     setSearchLocal(filters.search);
   }, [filters.search]);
 
-  // Debounce: push search to URL 300ms after last keystroke
   useEffect(() => {
     if (isMount.current) {
       isMount.current = false;
@@ -136,34 +204,59 @@ export function Filters({ owners }: FiltersProps) {
     router.push('/dashboard');
   }, [router]);
 
-  // Active column-filter chips (segment, tier, type, confidence are set via table headers)
-  const activeChips: Array<{
-    key: string;
-    label: string;
-    display: string;
-  }> = [];
-  for (const key of ['segment', 'tier', 'type', 'confidence'] as const) {
+  const applyPreset = useCallback(
+    (preset: { params: Record<string, string> }) => {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(preset.params)) {
+        params.set(key, value);
+      }
+      const qs = params.toString();
+      router.push(qs ? `/dashboard?${qs}` : '/dashboard');
+    },
+    [router],
+  );
+
+  // Active filter chips
+  const chipKeys = ['segment', 'tier', 'type', 'confidence', 'lifecycle', 'renewalRange', 'arrRange'] as const;
+  const activeChips: Array<{ key: string; label: string; display: string }> = [];
+  for (const key of chipKeys) {
     const val = filters[key];
     if (val !== 'all') {
       const display = FILTER_LABELS[key]?.[val] ?? val;
-      const label = key.charAt(0).toUpperCase() + key.slice(1);
+      const label = key === 'renewalRange' ? 'Renewal' : key === 'arrRange' ? 'ARR' : key.charAt(0).toUpperCase() + key.slice(1);
       activeChips.push({ key, label, display });
     }
   }
 
-  const hasActiveFilters =
-    filters.segment !== 'all' ||
-    filters.region !== 'all' ||
-    filters.owner !== 'all' ||
-    filters.type !== 'all' ||
-    filters.tier !== 'all' ||
-    filters.confidence !== 'all' ||
-    filters.search !== '';
+  const hasActiveFilters = Object.entries(filters).some(
+    ([key, val]) => key !== 'search' ? val !== 'all' : val !== '',
+  );
+
+  const activeFilterCount = activeChips.length + (filters.region !== 'all' ? 1 : 0) + (filters.owner !== 'all' ? 1 : 0) + (filters.search !== '' ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-2">
+      {/* Quick filter presets */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Quick filters:
+        </span>
+        {PRESETS.map((preset) => (
+          <Button
+            key={preset.label}
+            variant="outline"
+            size="xs"
+            className="text-xs h-6 px-2"
+            onClick={() => applyPreset(preset)}
+          >
+            {preset.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Main filters row */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Search — debounced, searches account_name */}
+        {/* Search */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -175,7 +268,7 @@ export function Filters({ owners }: FiltersProps) {
           />
         </div>
 
-        {/* Region (no table column for this, stays in top bar) */}
+        {/* Region */}
         <Select
           value={filters.region}
           onValueChange={(val) => updateParam('region', val ?? 'all')}
@@ -184,15 +277,16 @@ export function Filters({ owners }: FiltersProps) {
             <SelectValue placeholder="Region" />
           </SelectTrigger>
           <SelectContent>
-            {REGIONS.map((reg) => (
+            <SelectItem value="all">Region</SelectItem>
+            {REGIONS.filter((r) => r !== 'all').map((reg) => (
               <SelectItem key={reg} value={reg}>
-                {reg === 'all' ? 'All Regions' : reg}
+                {reg}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        {/* Owner (no table column for this, stays in top bar) */}
+        {/* Owner */}
         <Select
           value={filters.owner}
           onValueChange={(val) => updateParam('owner', val ?? 'all')}
@@ -201,7 +295,7 @@ export function Filters({ owners }: FiltersProps) {
             <SelectValue placeholder="Owner" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Owners</SelectItem>
+            <SelectItem value="all">Owner</SelectItem>
             {owners.map((owner) => (
               <SelectItem key={owner} value={owner}>
                 {owner}
@@ -210,11 +304,67 @@ export function Filters({ owners }: FiltersProps) {
           </SelectContent>
         </Select>
 
-        {/* Reset */}
+        {/* Lifecycle Stage */}
+        <Select
+          value={filters.lifecycle}
+          onValueChange={(val) => updateParam('lifecycle', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Lifecycle Stage" />
+          </SelectTrigger>
+          <SelectContent>
+            {LIFECYCLE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Days to Renewal */}
+        <Select
+          value={filters.renewalRange}
+          onValueChange={(val) => updateParam('renewalRange', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Renewal" />
+          </SelectTrigger>
+          <SelectContent>
+            {RENEWAL_RANGE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* ARR Range */}
+        <Select
+          value={filters.arrRange}
+          onValueChange={(val) => updateParam('arrRange', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="ARR" />
+          </SelectTrigger>
+          <SelectContent>
+            {ARR_RANGE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Reset + count */}
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             <RotateCcw className="mr-1 size-3" />
             Reset
+            {activeFilterCount > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-medium">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
         )}
       </div>
