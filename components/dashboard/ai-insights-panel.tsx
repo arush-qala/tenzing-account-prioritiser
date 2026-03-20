@@ -86,6 +86,40 @@ function InsightSection({
 }
 
 // ---------------------------------------------------------------------------
+// Helpers: format action text with tag badges + highlighted values
+// ---------------------------------------------------------------------------
+
+const TAG_COLORS: Record<string, string> = {
+  churn: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+  pipeline: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  expansion: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  retention: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+};
+
+function parseActionTag(text: string): { tag: string | null; rest: string } {
+  const match = text.match(/^\[([^\]]+)\]\s*/);
+  if (match) {
+    return { tag: match[1], rest: text.slice(match[0].length) };
+  }
+  return { tag: null, rest: text };
+}
+
+function formatActionText(text: string): React.ReactNode {
+  // Highlight £amounts and "X days" patterns
+  const parts = text.split(/(£[\d,]+(?:\.\d+)?|[\d,]+ days?\b|\d+ ARR\b)/g);
+  return parts.map((part, i) => {
+    if (/^£[\d,]/.test(part) || /^\d.*days?$/.test(part)) {
+      return (
+        <span key={i} className="font-semibold text-foreground">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -190,7 +224,7 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
           <p className="mb-3 text-xs text-red-500">{error}</p>
         )}
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {/* Urgent Actions — expanded by default, red border */}
+          {/* Urgent Actions — red border */}
           <InsightSection
             title="Urgent Actions"
             icon={Zap}
@@ -199,68 +233,98 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
             count={displayInsights.urgent_actions.length}
             defaultOpen
           >
-            <ul className="space-y-1.5">
-              {displayInsights.urgent_actions.map((action, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm leading-snug">
-                  <span className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-red-400" />
-                  {typeof action === 'string' ? action : (action as { action?: string }).action ?? JSON.stringify(action)}
-                </li>
-              ))}
-            </ul>
+            <div className="divide-y divide-border">
+              {displayInsights.urgent_actions.map((action, i) => {
+                const raw = typeof action === 'string' ? action : (action as { action?: string }).action ?? JSON.stringify(action);
+                const { tag, rest } = parseActionTag(raw);
+                const tagKey = tag?.toLowerCase() ?? '';
+                const tagColor = TAG_COLORS[tagKey] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+
+                return (
+                  <div key={i} className="py-2 first:pt-0 last:pb-0">
+                    <div className="flex items-start gap-2 text-sm leading-relaxed">
+                      {tag && (
+                        <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tagColor}`}>
+                          {tag}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground">
+                        {formatActionText(rest)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </InsightSection>
 
-          {/* Key Themes — collapsed by default, amber border */}
+          {/* Key Themes — amber border */}
           <InsightSection
             title="Key Themes"
             icon={Lightbulb}
             borderColor="border-l-amber-500"
             iconColor="text-amber-500"
             count={displayInsights.themes.length}
+            defaultOpen
           >
-            <ul className="space-y-1.5">
+            <div className="divide-y divide-border">
               {displayInsights.themes.map((theme, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm leading-snug">
-                  <span className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-amber-400" />
-                  {theme}
-                </li>
+                <div key={i} className="flex items-start gap-2.5 py-2 first:pt-0 last:pb-0">
+                  <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm leading-relaxed text-muted-foreground">
+                    {theme}
+                  </span>
+                </div>
               ))}
-            </ul>
+            </div>
           </InsightSection>
 
-          {/* Owner Patterns — collapsed by default, blue border */}
+          {/* Owner Patterns — blue border */}
           <InsightSection
             title="Owner Patterns"
             icon={UserCircle}
             borderColor="border-l-blue-500"
             iconColor="text-blue-500"
             count={displayInsights.owner_patterns.length}
+            defaultOpen
           >
-            <dl className="space-y-2">
+            <div className="divide-y divide-border">
               {displayInsights.owner_patterns.map((op, i) => (
-                <div key={i}>
-                  <dt className="text-sm font-medium">{op.owner}</dt>
-                  <dd className="text-sm text-muted-foreground leading-snug">{op.pattern}</dd>
+                <div key={i} className="py-2 first:pt-0 last:pb-0">
+                  <span className="inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    {op.owner}
+                  </span>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {op.pattern}
+                  </p>
                 </div>
               ))}
-            </dl>
+            </div>
           </InsightSection>
 
-          {/* Segment Patterns — collapsed by default, emerald border */}
+          {/* Segment Patterns — emerald border */}
           <InsightSection
             title="Segment Patterns"
             icon={BarChart3}
             borderColor="border-l-emerald-500"
             iconColor="text-emerald-500"
             count={displayInsights.segment_patterns.length}
+            defaultOpen
           >
-            <dl className="space-y-2">
+            <div className="divide-y divide-border">
               {displayInsights.segment_patterns.map((sp, i) => (
-                <div key={i}>
-                  <dt className="text-sm font-medium">{sp.segment}</dt>
-                  <dd className="text-sm text-muted-foreground leading-snug">{sp.pattern}</dd>
+                <div key={i} className="py-2 first:pt-0 last:pb-0">
+                  <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    {sp.segment}
+                  </span>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {sp.pattern}
+                  </p>
                 </div>
               ))}
-            </dl>
+            </div>
           </InsightSection>
         </div>
       </CardContent>
