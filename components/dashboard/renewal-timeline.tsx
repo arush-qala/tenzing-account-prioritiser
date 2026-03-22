@@ -30,6 +30,7 @@ import type { Account, ScoringResult, PriorityTier } from '@/lib/scoring/types';
 
 interface RenewalTimelineProps {
   results: Array<{ account: Account; result: ScoringResult }>;
+  analyses?: Record<string, { reasoning: string; recommended_actions?: Array<{ action: string; owner: string; timeframe: string }> }>;
 }
 
 interface ScatterDatum {
@@ -41,6 +42,7 @@ interface ScatterDatum {
   tier: PriorityTier;
   fill: string;
   accountId: string;
+  topAction: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,6 +99,15 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <p className="text-xs capitalize text-muted-foreground">
         Tier: {item.tier}
       </p>
+      {item.topAction !== null ? (
+        <p className="mt-1 text-xs text-emerald-600">
+          → {item.topAction}
+        </p>
+      ) : (
+        <p className="mt-1 text-[10px] italic text-muted-foreground/60">
+          Analyse to see recommended actions
+        </p>
+      )}
       <p className="mt-1 text-[10px] text-blue-600">Click to view account</p>
     </div>
   );
@@ -137,7 +148,7 @@ function RenderDot({ cx, cy, payload }: DotProps) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function RenewalTimeline({ results }: RenewalTimelineProps) {
+export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
   const router = useRouter();
   const [range, setRange] = useState<RangeOption>(90);
 
@@ -147,16 +158,21 @@ export function RenewalTimeline({ results }: RenewalTimelineProps) {
   );
 
   // Build scatter data with tier swim lanes
-  const chartData: ScatterDatum[] = upcoming.map(({ account, result }) => ({
-    x: account.days_to_renewal,
-    y: TIER_Y[result.priorityTier],
-    z: account.arr_gbp,
-    name: account.account_name,
-    arr: account.arr_gbp,
-    tier: result.priorityTier,
-    fill: TIER_HEX[result.priorityTier],
-    accountId: account.account_id,
-  }));
+  const chartData: ScatterDatum[] = upcoming.map(({ account, result }) => {
+    const analysis = analyses?.[account.account_id];
+    const actions = analysis?.recommended_actions;
+    return {
+      x: account.days_to_renewal,
+      y: TIER_Y[result.priorityTier],
+      z: account.arr_gbp,
+      name: account.account_name,
+      arr: account.arr_gbp,
+      tier: result.priorityTier,
+      fill: TIER_HEX[result.priorityTier],
+      accountId: account.account_id,
+      topAction: actions && actions.length > 0 ? actions[0].action : null,
+    };
+  });
 
   // Summary stats
   const renewals30d = upcoming.filter(
