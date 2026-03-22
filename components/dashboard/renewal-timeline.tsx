@@ -88,7 +88,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   const item = payload[0].payload;
   return (
-    <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+    <div className="rounded-lg border bg-background px-3 py-2 shadow-md" style={{ pointerEvents: 'auto' }}>
       <p className="text-sm font-semibold">{item.name}</p>
       <p className="text-xs text-muted-foreground">
         Renewal in {item.x} day{item.x !== 1 ? 's' : ''}
@@ -294,7 +294,7 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
                   <RechartsTooltip
                     content={<CustomTooltip />}
                     allowEscapeViewBox={{ x: true, y: true }}
-                    wrapperStyle={{ pointerEvents: 'auto' }}
+                    wrapperStyle={{ pointerEvents: 'none' }}
                   />
                   <Scatter
                     data={chartData}
