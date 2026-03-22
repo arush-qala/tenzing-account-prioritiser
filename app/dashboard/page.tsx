@@ -49,13 +49,13 @@ export default async function DashboardPage() {
   // ---- Fetch AI analyses (if any) ----
   const { data: analysesRows } = await supabase
     .from('ai_analyses')
-    .select('account_id, reasoning');
+    .select('account_id, reasoning, recommended_actions');
 
-  const analysesMap: Record<string, { reasoning: string }> = {};
+  const analysesMap: Record<string, { reasoning: string; recommended_actions?: Array<{ action: string; owner: string; timeframe: string }> }> = {};
   if (analysesRows) {
     for (const row of analysesRows) {
-      const r = row as { account_id: string; reasoning: string };
-      analysesMap[r.account_id] = { reasoning: r.reasoning };
+      const r = row as { account_id: string; reasoning: string; recommended_actions?: Array<{ action: string; owner: string; timeframe: string }> };
+      analysesMap[r.account_id] = { reasoning: r.reasoning, recommended_actions: r.recommended_actions ?? undefined };
     }
   }
 
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
                 Accounts renewing soon, sized by ARR, positioned by risk tier. Click any dot to view account.
               </p>
             </div>
-            <RenewalTimeline results={scoredResults} />
+            <RenewalTimeline results={scoredResults} analyses={analysesMap} />
           </div>
 
           {/* AI Insights */}
