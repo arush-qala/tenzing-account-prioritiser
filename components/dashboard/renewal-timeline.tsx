@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ScatterChart,
@@ -9,7 +9,6 @@ import {
   YAxis,
   ZAxis,
   CartesianGrid,
-  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
@@ -72,48 +71,6 @@ const RANGE_OPTIONS = [30, 60, 90, 180] as const;
 type RangeOption = (typeof RANGE_OPTIONS)[number];
 
 // ---------------------------------------------------------------------------
-// Custom tooltip
-// ---------------------------------------------------------------------------
-
-interface TooltipPayloadItem {
-  payload: ScatterDatum;
-}
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: TooltipPayloadItem[];
-}
-
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
-  const item = payload[0].payload;
-  return (
-    <div className="rounded-lg border bg-background px-3 py-2 shadow-md" style={{ pointerEvents: 'auto' }}>
-      <p className="text-sm font-semibold">{item.name}</p>
-      <p className="text-xs text-muted-foreground">
-        Renewal in {item.x} day{item.x !== 1 ? 's' : ''}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        ARR: {formatCurrency(item.arr)}
-      </p>
-      <p className="text-xs capitalize text-muted-foreground">
-        Tier: {item.tier}
-      </p>
-      {item.topAction !== null ? (
-        <p className="mt-1 text-xs text-emerald-600">
-          <span className="font-medium">Next action:</span> {item.topAction}
-        </p>
-      ) : (
-        <p className="mt-1 text-[10px] italic text-muted-foreground/60">
-          Analyse to see recommended actions
-        </p>
-      )}
-      <p className="mt-1 text-[10px] text-blue-600">Click to view account</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Custom dot renderer
 // ---------------------------------------------------------------------------
 
@@ -123,7 +80,7 @@ interface DotProps {
   payload?: ScatterDatum;
 }
 
-function RenderDot({ cx, cy, payload, ...rest }: DotProps & Record<string, unknown>) {
+function RenderDot({ cx, cy, payload }: DotProps) {
   if (cx == null || cy == null || !payload) return null;
   const minR = 6;
   const maxR = 18;
@@ -140,7 +97,6 @@ function RenderDot({ cx, cy, payload, ...rest }: DotProps & Record<string, unkno
       stroke={payload.fill}
       strokeWidth={1.5}
       className="cursor-pointer"
-      {...rest}
     />
   );
 }
@@ -152,6 +108,20 @@ function RenderDot({ cx, cy, payload, ...rest }: DotProps & Record<string, unkno
 export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
   const router = useRouter();
   const [range, setRange] = useState<RangeOption>(90);
+  const [hovered, setHovered] = useState<ScatterDatum | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!chartWrapperRef.current) return;
+    const target = e.target as Element;
+    if (target.tagName !== 'circle') {
+      setHovered(null);
+      return;
+    }
+    const rect = chartWrapperRef.current.getBoundingClientRect();
+    setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
 
   // Filter to accounts renewing within selected range
   const upcoming = results.filter(
@@ -226,7 +196,12 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
         ) : (
           <div className="flex flex-col gap-3">
             {/* Scatter chart with tier swim lanes */}
-            <div className="h-[280px] w-full">
+            <div
+              ref={chartWrapperRef}
+              className="relative h-[280px] w-full"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHovered(null)}
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart
                   margin={{ top: 10, right: 20, bottom: 10, left: 60 }}
@@ -292,15 +267,14 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
                       }}
                     />
                   )}
-                  <RechartsTooltip
-                    content={<CustomTooltip />}
-                    allowEscapeViewBox={{ x: true, y: true }}
-                  />
                   <Scatter
                     data={chartData}
                     shape={<RenderDot />}
+                    onMouseEnter={(data: { payload?: ScatterDatum }) => {
+                      if (data?.payload) setHovered(data.payload);
+                    }}
+                    onMouseLeave={() => setHovered(null)}
                     onClick={(_data: unknown, _index: unknown, e: React.MouseEvent) => {
-                      // Recharts wraps datum in ScatterPointItem; cast to access payload
                       const point = _data as { payload?: ScatterDatum } | undefined;
                       if (point?.payload?.accountId) {
                         e.stopPropagation();
@@ -310,6 +284,35 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
                   />
                 </ScatterChart>
               </ResponsiveContainer>
+
+              {/* Custom tooltip — bypasses Recharts internal state */}
+              {hovered && tooltipPos && (
+                <div
+                  className="pointer-events-none absolute z-50 rounded-lg border bg-background px-3 py-2 shadow-md"
+                  style={{ left: tooltipPos.x + 14, top: tooltipPos.y - 14 }}
+                >
+                  <p className="text-sm font-semibold">{hovered.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Renewal in {hovered.x} day{hovered.x !== 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ARR: {formatCurrency(hovered.arr)}
+                  </p>
+                  <p className="text-xs capitalize text-muted-foreground">
+                    Tier: {hovered.tier}
+                  </p>
+                  {hovered.topAction !== null ? (
+                    <p className="mt-1 text-xs text-emerald-600">
+                      <span className="font-medium">Next action:</span> {hovered.topAction}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[10px] italic text-muted-foreground/60">
+                      Analyse to see recommended actions
+                    </p>
+                  )}
+                  <p className="mt-1 text-[10px] text-blue-600">Click to view account</p>
+                </div>
+              )}
             </div>
 
             {/* Tier legend */}
