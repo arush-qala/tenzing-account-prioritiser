@@ -114,11 +114,6 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!chartWrapperRef.current) return;
-    const target = e.target as Element;
-    if (target.tagName !== 'circle') {
-      setHovered(null);
-      return;
-    }
     const rect = chartWrapperRef.current.getBoundingClientRect();
     setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }, []);
