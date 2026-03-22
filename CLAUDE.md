@@ -120,8 +120,17 @@ When making changes across conversations, update this file with:
 - Env vars added or changed
 - Architectural decisions made
 
+## Pre-Submission Checklist
+
+Before submitting the project, clean up interview-related context from the repository:
+- [ ] Remove or neutralise references to "interview", "challenge", "Tenzing AI Sherpa Programme" from `CLAUDE.md`
+- [ ] Remove `docs/challenge-brief.md` (interview brief — useful during development, should not ship)
+- [ ] Review `docs/technical-deep-dive-qa.md` for any interview-specific language
+- [ ] Check README.md for interview references that should be removed or reworded
+- [ ] Ensure the repo presents as a clean product, not a take-home assignment
+
 ## Related Docs
 
+- `docs/challenge-brief.md` — challenge brief (pasted from PDF)
 - `docs/technical-deep-dive-qa.md` — scoring model details, AI integration, null handling, validation results
-- `../account_prioritisation_challenge_instructions.pdf` — original task requirements
 - `../PLAN.md` — original implementation plan with scoring formulas
