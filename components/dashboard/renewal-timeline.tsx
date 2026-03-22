@@ -123,7 +123,7 @@ interface DotProps {
   payload?: ScatterDatum;
 }
 
-function RenderDot({ cx, cy, payload }: DotProps) {
+function RenderDot({ cx, cy, payload, ...rest }: DotProps & Record<string, unknown>) {
   if (cx == null || cy == null || !payload) return null;
   const minR = 6;
   const maxR = 18;
@@ -140,6 +140,7 @@ function RenderDot({ cx, cy, payload }: DotProps) {
       stroke={payload.fill}
       strokeWidth={1.5}
       className="cursor-pointer"
+      {...rest}
     />
   );
 }
@@ -294,7 +295,6 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
                   <RechartsTooltip
                     content={<CustomTooltip />}
                     allowEscapeViewBox={{ x: true, y: true }}
-                    wrapperStyle={{ pointerEvents: 'none' }}
                   />
                   <Scatter
                     data={chartData}
