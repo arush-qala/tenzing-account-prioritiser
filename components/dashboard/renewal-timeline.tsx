@@ -101,7 +101,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       </p>
       {item.topAction !== null ? (
         <p className="mt-1 text-xs text-emerald-600">
-          → {item.topAction}
+          <span className="font-medium">Next action:</span> {item.topAction}
         </p>
       ) : (
         <p className="mt-1 text-[10px] italic text-muted-foreground/60">
@@ -291,7 +291,11 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
                       }}
                     />
                   )}
-                  <RechartsTooltip content={<CustomTooltip />} />
+                  <RechartsTooltip
+                    content={<CustomTooltip />}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{ pointerEvents: 'auto' }}
+                  />
                   <Scatter
                     data={chartData}
                     shape={<RenderDot />}
