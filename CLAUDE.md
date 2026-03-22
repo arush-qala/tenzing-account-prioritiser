@@ -122,11 +122,23 @@ When making changes across conversations, update this file with:
 
 ## Pre-Submission Checklist
 
-Before submitting the project, clean up interview-related context from the repository:
+Before submitting the project, clean up interview-related context from the repository.
+
+**Step 0 — Sync**: Pull the latest version from GitHub (`git pull origin main`) before making any local changes, so you're working on the most up-to-date files.
+
+**Step 1 — Back up locally**: Before deleting anything from the repo, copy interview-related files to a local folder outside the repository (e.g. `~/tenzing-interview-backup/`) so no data or context is lost:
+- [ ] Copy `docs/challenge-brief.md` → `~/tenzing-interview-backup/`
+- [ ] Copy `docs/technical-deep-dive-qa.md` → `~/tenzing-interview-backup/`
+- [ ] Copy `CLAUDE.md` (pre-cleanup version) → `~/tenzing-interview-backup/`
+- [ ] Copy `README.md` (pre-cleanup version) → `~/tenzing-interview-backup/`
+- [ ] Copy any other files with interview context → `~/tenzing-interview-backup/`
+
+**Step 2 — Clean the repo**:
 - [ ] Remove or neutralise references to "interview", "challenge", "Tenzing AI Sherpa Programme" from `CLAUDE.md`
-- [ ] Remove `docs/challenge-brief.md` (interview brief — useful during development, should not ship)
+- [ ] Remove `docs/challenge-brief.md` from the repository (already backed up)
 - [ ] Review `docs/technical-deep-dive-qa.md` for any interview-specific language
 - [ ] Check README.md for interview references that should be removed or reworded
+- [ ] Remove this Pre-Submission Checklist section from `CLAUDE.md`
 - [ ] Ensure the repo presents as a clean product, not a take-home assignment
 
 ## Related Docs
