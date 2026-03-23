@@ -6,7 +6,16 @@ import type { Account } from '@/lib/scoring/types';
 import { NavHeader } from '@/components/nav-header';
 import { AccountHeader } from '@/components/account/account-header';
 import { AtAGlance } from '@/components/account/at-a-glance';
-import { AccountAccordion } from '@/components/account/account-accordion';
+import { WaterfallChart } from '@/components/account/waterfall-chart';
+import { MetricsGrid } from '@/components/account/metrics-grid';
+import { ContradictionsPanel } from '@/components/account/contradictions-panel';
+import { AiReasoning } from '@/components/account/ai-reasoning';
+import { RecommendedActions } from '@/components/account/recommended-actions';
+import { RiskOpportunity } from '@/components/account/risk-opportunity';
+import { CounterfactualPanel } from '@/components/account/counterfactual-panel';
+import { NotesPanel } from '@/components/account/notes-panel';
+import { CommentsSection } from '@/components/account/comments-section';
+import { ActionRecorder } from '@/components/account/action-recorder';
 import { AiChatPanel } from '@/components/account/ai-chat-panel';
 import { VoiceChat } from '@/components/account/voice-chat';
 import type { AccountAnalysis } from '@/components/account/ai-reasoning';
@@ -166,16 +175,63 @@ export default async function AccountDetailPage({ params }: PageProps) {
           {/* At a Glance strip */}
           <AtAGlance account={account} result={result} />
 
-          {/* Accordion sections */}
-          <AccountAccordion
-            account={account}
-            result={result}
-            analysis={analysis}
-            actions={actions}
-            counterfactualUp={counterfactualUp}
-            counterfactualDown={counterfactualDown}
-            existingActions={existingActions}
-          />
+          {/* ROW 1: Three-column layout — Score | AI | Actions */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr_1fr]">
+            {/* Col 1: Score Decomposition + Metrics + Contradictions */}
+            <div className="flex flex-col gap-4">
+              <WaterfallChart
+                subScores={result.subScores}
+                calibratedScore={result.calibratedScore}
+                priorityTier={result.priorityTier}
+              />
+              <MetricsGrid account={account} />
+              {result.contradictions.length > 0 && (
+                <ContradictionsPanel contradictions={result.contradictions} />
+              )}
+            </div>
+
+            {/* Col 2: AI Analysis + Risk/Opportunity */}
+            <div className="flex flex-col gap-4">
+              <AiReasoning
+                accountId={account.account_id}
+                analysis={analysis}
+              />
+              {analysis && (
+                <RiskOpportunity
+                  riskFactors={analysis.risk_factors}
+                  opportunityFactors={analysis.opportunity_factors}
+                />
+              )}
+            </div>
+
+            {/* Col 3: Recommended Actions */}
+            <div className="flex flex-col gap-4">
+              <RecommendedActions
+                accountId={account.account_id}
+                actions={actions}
+              />
+            </div>
+          </div>
+
+          {/* ROW 2: Notes + What-If */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <NotesPanel account={account} />
+            {(counterfactualUp || counterfactualDown) && (
+              <CounterfactualPanel
+                counterfactualUp={counterfactualUp}
+                counterfactualDown={counterfactualDown}
+              />
+            )}
+          </div>
+
+          {/* ROW 3: Comments + Action Recorder */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <CommentsSection accountId={account.account_id} />
+            <ActionRecorder
+              accountId={account.account_id}
+              existingActions={existingActions}
+            />
+          </div>
         </div>
       </main>
     </div>

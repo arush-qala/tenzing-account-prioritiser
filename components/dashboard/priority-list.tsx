@@ -18,10 +18,12 @@ import {
 } from '@/components/ui/tooltip';
 import { AlertTriangle, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { TypeBadge } from '@/components/ui/type-badge';
 import { formatCurrency } from '@/lib/utils/format';
-import { getFiltersFromParams } from '@/components/dashboard/filters';
+import { Filters, getFiltersFromParams } from '@/components/dashboard/filters';
+import { AnalyseAllButton } from '@/components/dashboard/analyse-all-button';
 import {
   SortableHeader,
   type SortState,
@@ -60,42 +62,6 @@ const CONFIDENCE_ORDER: Record<string, number> = {
 };
 
 // ---------------------------------------------------------------------------
-// Column filter options
-// ---------------------------------------------------------------------------
-
-const SEGMENT_FILTER_OPTIONS = [
-  { value: 'all', label: 'All Segments' },
-  { value: 'Enterprise', label: 'Enterprise' },
-  { value: 'Mid-Market', label: 'Mid-Market' },
-  { value: 'SMB', label: 'SMB' },
-];
-
-const TIER_FILTER_OPTIONS = [
-  { value: 'all', label: 'All Tiers' },
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-  { value: 'monitor', label: 'Monitor' },
-];
-
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'All Types' },
-  { value: 'churn_risk', label: 'Churn Risk' },
-  { value: 'renewal_urgent', label: 'Renewal Urgent' },
-  { value: 'expansion_opportunity', label: 'Expansion' },
-  { value: 'mixed_signals', label: 'Mixed Signals' },
-  { value: 'stable', label: 'Stable' },
-];
-
-const CONFIDENCE_FILTER_OPTIONS = [
-  { value: 'all', label: 'All' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-];
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -116,6 +82,8 @@ function confidenceLabel(score: number): { text: string; className: string } {
 interface PriorityListProps {
   results: Array<{ account: Account; result: ScoringResult }>;
   analyses: Record<string, { reasoning: string }>;
+  owners: string[];
+  analysedCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +95,7 @@ const DEFAULT_SORT: SortState = {
   direction: 'desc',
 };
 
-export function PriorityList({ results, analyses: initialAnalyses }: PriorityListProps) {
+export function PriorityList({ results, analyses: initialAnalyses, owners, analysedCount }: PriorityListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filters = getFiltersFromParams(searchParams);
@@ -173,21 +141,6 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
       return { ...DEFAULT_SORT };
     });
   }, []);
-
-  // Column filter handler: updates URL params
-  const handleColumnFilter = useCallback(
-    (column: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value === 'all') {
-        params.delete(column);
-      } else {
-        params.set(column, value);
-      }
-      const qs = params.toString();
-      router.push(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false });
-    },
-    [router, searchParams],
-  );
 
   // ---------- Filter ----------
 
@@ -310,20 +263,28 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
     return direction === 'asc' ? cmp : -cmp;
   });
 
-  if (sorted.length === 0) {
-    return (
-      <div className="py-12 text-center text-muted-foreground">
-        No accounts match the current filters.
-      </div>
-    );
-  }
-
   return (
-    <TooltipProvider>
-      {/* Legend — always visible, uses real badge components */}
-      <div className="mb-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-md border bg-card/50 px-4 py-2.5 text-xs">
+    <Card>
+      {/* Card header: title + count + Analyse All */}
+      <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-sm font-semibold">Priority List</CardTitle>
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+            {filtered.length}
+          </span>
+        </div>
+        <AnalyseAllButton analysedCount={analysedCount} totalCount={results.length} />
+      </CardHeader>
+
+      {/* Filters bar */}
+      <div className="border-t px-6 py-3">
+        <Filters owners={owners} />
+      </div>
+
+      {/* Legend */}
+      <div className="mx-6 mb-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-md border bg-card/50 px-4 py-2.5 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
+          <span className="font-semibold text-muted-foreground text-[10px]">
             Tiers
           </span>
           {(['critical', 'high', 'medium', 'low', 'monitor'] as PriorityTier[]).map((tier) => (
@@ -331,7 +292,7 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
+          <span className="font-semibold text-muted-foreground text-[10px]">
             Types
           </span>
           {(['churn_risk', 'renewal_urgent', 'expansion_opportunity', 'mixed_signals', 'stable'] as PriorityType[]).map((type) => (
@@ -339,6 +300,14 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
           ))}
         </div>
       </div>
+
+      <CardContent className="px-6 pb-4">
+      {sorted.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground">
+          No accounts match the current filters.
+        </div>
+      ) : (
+      <TooltipProvider>
       <Table>
         <TableHeader>
           <TableRow>
@@ -354,9 +323,6 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
               label="Segment"
               currentSort={sortState}
               onSort={handleSort}
-              filterOptions={SEGMENT_FILTER_OPTIONS}
-              filterValue={filters.segment}
-              onFilter={handleColumnFilter}
             />
             <SortableHeader
               column="arr_gbp"
@@ -377,27 +343,18 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
               label="Tier"
               currentSort={sortState}
               onSort={handleSort}
-              filterOptions={TIER_FILTER_OPTIONS}
-              filterValue={filters.tier}
-              onFilter={handleColumnFilter}
             />
             <SortableHeader
               column="type"
               label="Type"
               currentSort={sortState}
               onSort={handleSort}
-              filterOptions={TYPE_FILTER_OPTIONS}
-              filterValue={filters.type}
-              onFilter={handleColumnFilter}
             />
             <SortableHeader
               column="confidence"
               label="Confidence"
               currentSort={sortState}
               onSort={handleSort}
-              filterOptions={CONFIDENCE_FILTER_OPTIONS}
-              filterValue={filters.confidence}
-              onFilter={handleColumnFilter}
             />
             <TableHead className="min-w-[200px]">AI Summary</TableHead>
             <TableHead className="w-[90px]">Actions</TableHead>
@@ -501,6 +458,9 @@ export function PriorityList({ results, analyses: initialAnalyses }: PriorityLis
           })}
         </TableBody>
       </Table>
-    </TooltipProvider>
+      </TooltipProvider>
+      )}
+      </CardContent>
+    </Card>
   );
 }

@@ -208,7 +208,7 @@ export default function ChatUI() {
           welcomeMessage={{
             title: 'Portfolio Analyst',
             description:
-              'I help you identify which accounts need attention and what action to take. Ask about churn risk, expansion opportunities, renewal pipeline, or any cross-functional Sales and CS question.',
+              'I help you identify which accounts need attention and what action to take. Ask about churn risk, expansion opportunities, renewal pipeline, or any cross-functional Sales and CS question.\n\n📊 Ask me to create charts, tables, or pull specific data \u2014 I can generate live visuals from your portfolio.',
           }}
           conversationStarters={{
             variant: 'long',

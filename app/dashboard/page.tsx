@@ -6,11 +6,8 @@ import type { PortfolioInsightsData } from '@/components/dashboard/ai-insights-p
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { AiInsightsPanel } from '@/components/dashboard/ai-insights-panel';
 import { RenewalTimeline } from '@/components/dashboard/renewal-timeline';
-import { Filters } from '@/components/dashboard/filters';
 import { PriorityList } from '@/components/dashboard/priority-list';
 import { NavHeader } from '@/components/nav-header';
-import { AnalyseAllButton } from '@/components/dashboard/analyse-all-button';
-import { Separator } from '@/components/ui/separator';
 
 export default async function DashboardPage() {
   // ---- Auth ----
@@ -78,71 +75,27 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col gap-6">
           {/* Page header */}
-          <div>
-            <h1 className="text-lg font-semibold">Portfolio Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Overview of {accounts.length} accounts across your portfolio. Click any summary card for details.
-            </p>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold tracking-tight">Portfolio Dashboard</h1>
+            <span className="text-xs text-muted-foreground">{accounts.length} accounts</span>
           </div>
 
           {/* Summary cards */}
           <PortfolioSummary results={scoredResults} />
 
-          {/* Renewal Timeline — full width */}
-          <div>
-            <div className="mb-2">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                Upcoming Renewals
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Accounts renewing soon, sized by ARR, positioned by risk tier. Click any dot to view account.
-              </p>
-            </div>
-            <RenewalTimeline results={scoredResults} analyses={analysesMap} />
-          </div>
+          {/* Renewal Timeline */}
+          <RenewalTimeline results={scoredResults} analyses={analysesMap} />
 
           {/* AI Insights */}
-          <div>
-            <div className="mb-2">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                AI Portfolio Insights
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                AI-generated patterns across your portfolio. Click Refresh to regenerate.
-              </p>
-            </div>
-            <AiInsightsPanel insights={portfolioInsights} />
-          </div>
+          <AiInsightsPanel insights={portfolioInsights} />
 
-          <Separator />
-
-          {/* Filters + Table */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Priority List
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Sorted by priority score. Click any row to view full account details.
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-xs text-muted-foreground">
-                  {accounts.length} accounts
-                </span>
-                <AnalyseAllButton
-                  analysedCount={Object.keys(analysesMap).length}
-                  totalCount={accounts.length}
-                />
-              </div>
-            </div>
-            <Filters owners={owners} />
-            <PriorityList
-              results={scoredResults}
-              analyses={analysesMap}
-            />
-          </div>
+          {/* Priority List (includes filters, search, analyse-all) */}
+          <PriorityList
+            results={scoredResults}
+            analyses={analysesMap}
+            owners={owners}
+            analysedCount={Object.keys(analysesMap).length}
+          />
         </div>
       </main>
     </div>
