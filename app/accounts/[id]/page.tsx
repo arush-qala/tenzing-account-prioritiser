@@ -178,7 +178,7 @@ export default async function AccountDetailPage({ params }: PageProps) {
           {/* ROW 1: Three-column layout — Score | AI | Actions */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr_1fr]">
             {/* Col 1: Score Decomposition + Metrics + Contradictions */}
-            <div className="flex flex-col gap-4">
+            <div className="min-w-0 flex flex-col gap-4">
               <WaterfallChart
                 subScores={result.subScores}
                 calibratedScore={result.calibratedScore}
@@ -191,7 +191,7 @@ export default async function AccountDetailPage({ params }: PageProps) {
             </div>
 
             {/* Col 2: AI Analysis + Risk/Opportunity */}
-            <div className="flex flex-col gap-4">
+            <div className="min-w-0 flex flex-col gap-4">
               <AiReasoning
                 accountId={account.account_id}
                 analysis={analysis}
@@ -205,7 +205,7 @@ export default async function AccountDetailPage({ params }: PageProps) {
             </div>
 
             {/* Col 3: Recommended Actions */}
-            <div className="flex flex-col gap-4">
+            <div className="min-w-0 flex flex-col gap-4">
               <RecommendedActions
                 accountId={account.account_id}
                 actions={actions}

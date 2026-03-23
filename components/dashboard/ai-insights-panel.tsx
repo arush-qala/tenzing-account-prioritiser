@@ -33,7 +33,8 @@ export interface PortfolioInsightsData {
 
 interface AiInsightsPanelProps {
   insights: PortfolioInsightsData | null;
-  hasAnalyses: boolean;
+  analysedCount: number;
+  totalCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ function formatActionText(text: string): React.ReactNode {
 // Component
 // ---------------------------------------------------------------------------
 
-export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps) {
+export function AiInsightsPanel({ insights, analysedCount, totalCount }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [runningFullPipeline, setRunningFullPipeline] = useState(false);
   const [pipelineProgress, setPipelineProgress] = useState<number | null>(null);
@@ -166,8 +167,8 @@ export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps)
     setLoading(true);
     setError(null);
 
-    // If no account analyses exist, run the full pipeline first
-    const needsFullPipeline = !hasAnalyses;
+    // If not all accounts have been analysed, run the full pipeline first
+    const needsFullPipeline = analysedCount < totalCount;
     setRunningFullPipeline(needsFullPipeline);
 
     try {
@@ -248,7 +249,7 @@ export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps)
                   <Loader2 className="mr-1 size-3 animate-spin" />
                   {runningFullPipeline
                     ? pipelineProgress !== null
-                      ? `Analysing... ${pipelineProgress}/60`
+                      ? `Analysing... ${pipelineProgress}/${totalCount}`
                       : 'Starting analysis...'
                     : 'Generating...'}
                 </>

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     let failedCount = 0;
 
     // ---- Analyse accounts in parallel batches of 5 ----
-    const BATCH_SIZE = 5;
+    const BATCH_SIZE = 10;
 
     const analyseOne = async (item: typeof scoredAccounts[0]) => {
       const { account, result: scoringResult } = item;
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       await Promise.all(batch.map(analyseOne));
       // Short delay between batches to avoid rate limits
       if (i + BATCH_SIZE < scoredAccounts.length) {
-        await delay(200);
+        await delay(50);
       }
     }
 
