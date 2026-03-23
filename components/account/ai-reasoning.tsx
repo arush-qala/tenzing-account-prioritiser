@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -68,6 +69,7 @@ function capitalize(str: string): string {
 // ---------------------------------------------------------------------------
 
 export function AiReasoning({ analysis, accountId, isLoading: externalLoading }: AiReasoningProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [localAnalysis, setLocalAnalysis] = useState<AccountAnalysis | null>(analysis);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
       if (data.analysis) {
         setLocalAnalysis(data.analysis as AccountAnalysis);
       }
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
