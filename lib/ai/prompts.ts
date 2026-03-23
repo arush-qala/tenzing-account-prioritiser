@@ -37,7 +37,7 @@ export function buildAccountAnalysisPrompt(
   scoringResult: ScoringResult,
 ): AccountAnalysisPrompt {
   const system =
-    'You are a senior portfolio analyst at a B2B tech PE firm, advising commercial leadership ' +
+    'You are a senior portfolio analyst at a B2B tech company, advising commercial leadership ' +
     '(CRO, VP Sales, Head of Customer Success) who work cross-functionally across Sales and CS. ' +
     'Frame all analysis around three outcomes: pipeline conversion, expansion revenue, and churn reduction. ' +
     'Provide clear, actionable analysis. Return ONLY valid JSON with no markdown fences, ' +
