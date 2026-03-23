@@ -55,40 +55,40 @@ export function CounterfactualPanel({
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* Move UP */}
-          <div className="rounded-lg border-2 border-green-200 bg-green-50/50 p-4">
+          {/* Move UP in priority = account worsening = RED */}
+          <div className="rounded-lg border-2 border-red-200 bg-red-50/50 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <ArrowUpCircle className="size-5 text-green-600" />
-              <h4 className="text-sm font-semibold text-green-800">
-                To Move Up
+              <ArrowUpCircle className="size-5 text-red-600" />
+              <h4 className="text-sm font-semibold text-red-800">
+                Escalation Risk (Higher Priority Tier)
               </h4>
             </div>
             {counterfactualUp ? (
-              <p className="text-sm leading-relaxed text-green-700">
+              <p className="text-sm leading-relaxed text-red-700">
                 {counterfactualUp}
               </p>
             ) : (
-              <p className="text-sm italic text-green-600/60">
-                No upward counterfactual available
+              <p className="text-sm italic text-red-600/60">
+                No escalation scenario available
               </p>
             )}
           </div>
 
-          {/* Move DOWN */}
-          <div className="rounded-lg border-2 border-red-200 bg-red-50/50 p-4">
+          {/* Move DOWN in priority = account improving = GREEN */}
+          <div className="rounded-lg border-2 border-green-200 bg-green-50/50 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <ArrowDownCircle className="size-5 text-red-600" />
-              <h4 className="text-sm font-semibold text-red-800">
-                Risk of Moving Down
+              <ArrowDownCircle className="size-5 text-green-600" />
+              <h4 className="text-sm font-semibold text-green-800">
+                Path to Improvement (Lower Priority Tier)
               </h4>
             </div>
             {counterfactualDown ? (
-              <p className="text-sm leading-relaxed text-red-700">
+              <p className="text-sm leading-relaxed text-green-700">
                 {counterfactualDown}
               </p>
             ) : (
-              <p className="text-sm italic text-red-600/60">
-                No downward counterfactual available
+              <p className="text-sm italic text-green-600/60">
+                No improvement scenario available
               </p>
             )}
           </div>
