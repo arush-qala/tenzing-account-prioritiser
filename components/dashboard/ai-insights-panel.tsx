@@ -33,6 +33,7 @@ export interface PortfolioInsightsData {
 
 interface AiInsightsPanelProps {
   insights: PortfolioInsightsData | null;
+  hasAnalyses: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,8 +124,9 @@ function formatActionText(text: string): React.ReactNode {
 // Component
 // ---------------------------------------------------------------------------
 
-export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
+export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
+  const [runningFullPipeline, setRunningFullPipeline] = useState(false);
   const [localInsights, setLocalInsights] =
     useState<PortfolioInsightsData | null>(insights);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +134,35 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
   async function generateInsights() {
     setLoading(true);
     setError(null);
+
+    // If no account analyses exist, run the full pipeline first
+    const needsFullPipeline = !hasAnalyses;
+    setRunningFullPipeline(needsFullPipeline);
+
     try {
+      if (needsFullPipeline) {
+        // Full pipeline: analyse all accounts + generate insights
+        const analyseRes = await fetch('/api/analyse-all', { method: 'POST' });
+        if (!analyseRes.ok) {
+          const body = await analyseRes.json();
+          throw new Error(body.error ?? 'Failed to analyse accounts');
+        }
+        // analyse-all already generates portfolio insights at the end,
+        // so we need to fetch the latest insights
+        const insightsRes = await fetch('/api/portfolio-insights');
+        if (insightsRes.ok) {
+          const data = await insightsRes.json();
+          const parsed = data.insights as PortfolioInsightsData | undefined;
+          if (parsed) {
+            setLocalInsights(parsed);
+          }
+        }
+        // Refresh the page to update AI summaries in the priority list
+        window.location.reload();
+        return;
+      }
+
+      // Normal path: just refresh insights
       const res = await fetch('/api/portfolio-insights', { method: 'POST' });
       if (!res.ok) {
         const body = await res.json();
@@ -147,6 +177,7 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
+      setRunningFullPipeline(false);
     }
   }
 
@@ -180,7 +211,9 @@ export function AiInsightsPanel({ insights }: AiInsightsPanelProps) {
               {loading ? (
                 <>
                   <Loader2 className="mr-1 size-3 animate-spin" />
-                  Generating...
+                  {runningFullPipeline
+                    ? 'Analysing all accounts & generating insights...'
+                    : 'Generating...'}
                 </>
               ) : (
                 <>

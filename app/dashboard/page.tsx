@@ -87,7 +87,7 @@ export default async function DashboardPage() {
           <RenewalTimeline results={scoredResults} analyses={analysesMap} />
 
           {/* AI Insights */}
-          <AiInsightsPanel insights={portfolioInsights} />
+          <AiInsightsPanel insights={portfolioInsights} hasAnalyses={Object.keys(analysesMap).length > 0} />
 
           {/* Priority List (includes filters, search, analyse-all) */}
           <PriorityList
