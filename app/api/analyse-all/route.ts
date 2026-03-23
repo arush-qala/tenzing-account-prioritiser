@@ -60,10 +60,22 @@ export async function POST(request: Request) {
     // ---- Score all accounts (calibrated) ----
     const scoredAccounts = scoreAllAccounts(accounts);
 
+    // ---- Skip accounts that already have analyses ----
+    const { data: existingAnalyses } = await supabase
+      .from('ai_analyses')
+      .select('account_id');
+    const existingIds = new Set(
+      (existingAnalyses ?? []).map((a: { account_id: string }) => a.account_id),
+    );
+    const toAnalyse = scoredAccounts.filter(
+      (s) => !existingIds.has(s.account.account_id),
+    );
+
     let analysedCount = 0;
     let failedCount = 0;
+    const skippedCount = scoredAccounts.length - toAnalyse.length;
 
-    // ---- Analyse accounts in parallel batches of 5 ----
+    // ---- Analyse accounts in parallel batches ----
     const BATCH_SIZE = 10;
 
     const analyseOne = async (item: typeof scoredAccounts[0]) => {
@@ -116,11 +128,11 @@ export async function POST(request: Request) {
       }
     };
 
-    for (let i = 0; i < scoredAccounts.length; i += BATCH_SIZE) {
-      const batch = scoredAccounts.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < toAnalyse.length; i += BATCH_SIZE) {
+      const batch = toAnalyse.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(analyseOne));
       // Short delay between batches to avoid rate limits
-      if (i + BATCH_SIZE < scoredAccounts.length) {
+      if (i + BATCH_SIZE < toAnalyse.length) {
         await delay(50);
       }
     }
@@ -156,6 +168,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       analysed: analysedCount,
       failed: failedCount,
+      skipped: skippedCount,
       total: accounts.length,
       duration_ms: durationMs,
     });

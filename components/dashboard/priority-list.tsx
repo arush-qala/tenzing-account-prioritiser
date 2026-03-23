@@ -281,6 +281,13 @@ export function PriorityList({ results, analyses: initialAnalyses, owners, analy
         <Filters owners={owners} />
       </div>
 
+      {/* Pre-populated info banner */}
+      {analysedCount > 0 && analysedCount < results.length && (
+        <div className="mx-6 mb-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+          AI analysis has been pre-run for {analysedCount} accounts. Click <strong>Run AI Analysis</strong> to analyse the remaining {results.length - analysedCount} and see the system in action.
+        </div>
+      )}
+
       {/* Legend */}
       <div className="mx-6 mb-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-md border bg-card/50 px-4 py-2.5 text-xs">
         <div className="flex items-center gap-2">
