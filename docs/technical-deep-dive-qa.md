@@ -315,7 +315,7 @@ The current weights are not far off from what these metrics would suggest, thoug
 
 ### 8.4 Recommendation
 
-Do not change weights for the submission. The current weights are defensible, the system is transparent about them (waterfall chart, published weights in the README), and Kendall's tau proves stability. What matters is being able to articulate:
+The current weights are defensible, the system is transparent about them (waterfall chart, published weights in the README), and Kendall's tau proves stability. What matters is being able to articulate:
 - Why the weights are what they are
 - How they map to the stated success metrics
 - What would be needed to improve them (outcome data)
@@ -367,9 +367,9 @@ The feedback loop is currently a **data collection mechanism**, not a closed loo
 
 ### Why this was the right trade-off for the prototype
 
-The challenge brief says "not being evaluated: production-hardening beyond reasonable scope." Building the rating mechanism demonstrates product lifecycle thinking. Actually closing the loop is a production refinement. The data collection is the hard part; the wiring is straightforward.
+Building the rating mechanism demonstrates product lifecycle thinking. Actually closing the loop is a production refinement. The data collection is the hard part; the wiring is straightforward.
 
-For the write-up, frame as: "The rating mechanism collects the data needed to close the loop. In production, accumulated ratings would inform prompt refinement and, with sufficient volume, weight optimisation."
+The rating mechanism collects the data needed to close the loop. In production, accumulated ratings would inform prompt refinement and, with sufficient volume, weight optimisation.
 
 ---
 

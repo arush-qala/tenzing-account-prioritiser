@@ -2,11 +2,9 @@
 
 An account prioritisation tool for B2B SaaS portfolio leadership. Takes 60 accounts with 40 data columns each (financials, usage, support, sentiment, free-text notes) and produces a ranked priority list with AI-generated reasoning, recommended actions, and counterfactual explanations.
 
-**Live prototype**: [DEPLOYED_URL]
+**Live prototype**: <https://tenzing-account-prioritiser.vercel.app>
 
-**Demo credentials**: `demo@tenzing.pe` / `TenzingDemo2026`
-
-Built for the Tenzing AI Sherpa Programme technical challenge.
+**Demo credentials**: Google OAuth (any Google account)
 
 ---
 
@@ -65,7 +63,7 @@ CSV (60 accounts, 40 columns)
 └─────────────────────────────────────────────┘
 ```
 
-**Why this architecture?** The evaluation criteria prioritise clarity and defensibility of prioritisation logic. Deterministic scoring handles that: every score is traceable to a formula with known weights. AI then adds what formulas cannot: synthesising free-text notes with quantitative signals into natural language reasoning and recommended actions. ML adds pattern detection (anomalies, clusters, sentiment analysis) that neither deterministic rules nor AI alone would produce efficiently.
+**Why this architecture?** Clarity and defensibility of prioritisation logic matter most for leadership trust. Deterministic scoring handles that: every score is traceable to a formula with known weights. AI then adds what formulas cannot: synthesising free-text notes with quantitative signals into natural language reasoning and recommended actions. ML adds pattern detection (anomalies, clusters, sentiment analysis) that neither deterministic rules nor AI alone would produce efficiently.
 
 ### Tech Stack
 
