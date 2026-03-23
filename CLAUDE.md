@@ -104,7 +104,7 @@ NEXT_PUBLIC_ENABLE_VOICE=true    # Feature flag: controls all voice UI
 
 ## Important Notes
 
-- **Model ID**: Must be `claude-sonnet-4-20250514`. The ID `claude-sonnet-4-6-20250627` does NOT exist on this API key.
+- **Model ID**: Uses `claude-sonnet-4-6` (Sonnet 4.6). The alias format works; dated IDs like `claude-sonnet-4-6-20250627` do not.
 - **shadcn/ui variant**: Uses `@base-ui/react`, not Radix. Components use `render` prop instead of `asChild`. Select `onValueChange` passes `(value: string | null)`.
 - **Supabase project**: `lgognnbyohczdgxnzjci` (EU West 1)
 - **ElevenLabs**: TTS API requires paid plan; Conversational AI Agents work on free tier. Voice context is injected at runtime via `sendContextualUpdate()` in `voice-chat.tsx`.

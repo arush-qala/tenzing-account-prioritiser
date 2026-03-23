@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       .insert({
         insights,
         generated_at: new Date().toISOString(),
-        model_version: 'claude-sonnet-4-20250514',
+        model_version: 'claude-sonnet-4-6',
       })
       .select()
       .single();
