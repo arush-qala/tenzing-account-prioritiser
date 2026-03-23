@@ -107,7 +107,7 @@ Return a JSON object with exactly these fields:
   "opportunity_factors": ["max 3-4 items, max 15 words each, concise and direct"],
   "adjusted_tier": "${scoringResult.priorityTier}",
   "adjustment_reason": "One sentence max. If unchanged: 'Tier confirmed — [key reason]'. If changed: '[Old] → [New]: [key reason]'",
-  "confidence_level": "high|medium|low"
+  "confidence_level": "high (signals consistent, clear direction) | medium (some conflicts or missing data) | low (major data gaps or contradictory signals)"
 }`;
 
   return { system, user };
