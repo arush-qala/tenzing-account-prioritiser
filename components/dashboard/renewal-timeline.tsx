@@ -19,7 +19,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, Sparkles } from 'lucide-react';
+import { TierBadge } from '@/components/ui/tier-badge';
 import { formatCurrency } from '@/lib/utils/format';
 import type { Account, ScoringResult, PriorityTier } from '@/lib/scoring/types';
 
@@ -39,6 +40,8 @@ interface ScatterDatum {
   name: string;
   arr: number;
   tier: PriorityTier;
+  segment: string;
+  score: number;
   fill: string;
   accountId: string;
   topAction: string | null;
@@ -134,6 +137,8 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
       name: account.account_name,
       arr: account.arr_gbp,
       tier: result.priorityTier,
+      segment: account.segment,
+      score: result.calibratedScore,
       fill: TIER_HEX[result.priorityTier],
       accountId: account.account_id,
       topAction: actions && actions.length > 0 ? actions[0].action : null,
@@ -283,29 +288,45 @@ export function RenewalTimeline({ results, analyses }: RenewalTimelineProps) {
               {/* Custom tooltip — bypasses Recharts internal state */}
               {hovered && tooltipPos && (
                 <div
-                  className="pointer-events-none absolute z-50 rounded-lg border bg-background px-3 py-2 shadow-md"
+                  className="pointer-events-none absolute z-50 w-64 rounded-lg border bg-background shadow-lg"
                   style={{ left: tooltipPos.x + 14, top: tooltipPos.y - 14 }}
                 >
-                  <p className="text-sm font-semibold">{hovered.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Renewal in {hovered.x} day{hovered.x !== 1 ? 's' : ''}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    ARR: {formatCurrency(hovered.arr)}
-                  </p>
-                  <p className="text-xs capitalize text-muted-foreground">
-                    Tier: {hovered.tier}
-                  </p>
+                  {/* Header: name + tier badge */}
+                  <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1.5">
+                    <span className="text-sm font-semibold leading-tight">{hovered.name}</span>
+                    <TierBadge tier={hovered.tier} size="sm" />
+                  </div>
+                  <p className="px-3 pb-2 text-[11px] text-muted-foreground">{hovered.segment}</p>
+
+                  {/* Metrics row */}
+                  <div className="grid grid-cols-3 border-t px-3 py-2">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Renewal</p>
+                      <p className="text-xs font-semibold">{hovered.x}d</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">ARR</p>
+                      <p className="text-xs font-semibold">{formatCurrency(hovered.arr)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Score</p>
+                      <p className="text-xs font-semibold">{hovered.score.toFixed(1)}</p>
+                    </div>
+                  </div>
+
+                  {/* Top action */}
                   {hovered.topAction !== null ? (
-                    <p className="mt-1 text-xs text-emerald-600">
-                      <span className="font-medium">Next action:</span> {hovered.topAction}
-                    </p>
+                    <div className="border-t px-3 py-2">
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        <Sparkles className="mr-1 inline size-3 text-emerald-500" />
+                        {hovered.topAction}
+                      </p>
+                    </div>
                   ) : (
-                    <p className="mt-1 text-[10px] italic text-muted-foreground/60">
-                      Analyse to see recommended actions
-                    </p>
+                    <div className="border-t px-3 py-1.5">
+                      <p className="text-[10px] italic text-muted-foreground/60">Not yet analysed</p>
+                    </div>
                   )}
-                  <p className="mt-1 text-[10px] text-blue-600">Click to view account</p>
                 </div>
               )}
             </div>
