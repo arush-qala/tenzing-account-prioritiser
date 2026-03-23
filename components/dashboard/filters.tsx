@@ -60,6 +60,38 @@ interface FiltersProps {
 // Constants
 // ---------------------------------------------------------------------------
 
+const SEGMENT_OPTIONS = [
+  { value: 'all', label: 'Segment' },
+  { value: 'Enterprise', label: 'Enterprise' },
+  { value: 'Mid-Market', label: 'Mid-Market' },
+  { value: 'SMB', label: 'SMB' },
+];
+
+const TIER_OPTIONS = [
+  { value: 'all', label: 'Tier' },
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+  { value: 'monitor', label: 'Monitor' },
+];
+
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'Type' },
+  { value: 'churn_risk', label: 'Churn Risk' },
+  { value: 'renewal_urgent', label: 'Renewal Urgent' },
+  { value: 'expansion_opportunity', label: 'Expansion' },
+  { value: 'mixed_signals', label: 'Mixed Signals' },
+  { value: 'stable', label: 'Stable' },
+];
+
+const CONFIDENCE_OPTIONS = [
+  { value: 'all', label: 'Confidence' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+
 const REGIONS = ['all', 'US', 'EU', 'UK'] as const;
 
 const LIFECYCLE_OPTIONS = [
@@ -278,6 +310,74 @@ export function Filters({ owners }: FiltersProps) {
             onChange={(e) => setSearchLocal(e.target.value)}
           />
         </div>
+
+        {/* Segment */}
+        <Select
+          value={filters.segment}
+          onValueChange={(val) => updateParam('segment', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <FilterSelectValue value={filters.segment} label="Segment" />
+          </SelectTrigger>
+          <SelectContent>
+            {SEGMENT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Tier */}
+        <Select
+          value={filters.tier}
+          onValueChange={(val) => updateParam('tier', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <FilterSelectValue value={filters.tier} label="Tier" />
+          </SelectTrigger>
+          <SelectContent>
+            {TIER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Type */}
+        <Select
+          value={filters.type}
+          onValueChange={(val) => updateParam('type', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <FilterSelectValue value={filters.type} label="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            {TYPE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Confidence */}
+        <Select
+          value={filters.confidence}
+          onValueChange={(val) => updateParam('confidence', val ?? 'all')}
+        >
+          <SelectTrigger>
+            <FilterSelectValue value={filters.confidence} label="Confidence" />
+          </SelectTrigger>
+          <SelectContent>
+            {CONFIDENCE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Region */}
         <Select
