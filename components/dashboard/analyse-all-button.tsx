@@ -1,20 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function AnalyseAllButton({ analysedCount, totalCount }: { analysedCount: number; totalCount: number }) {
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [result, setResult] = useState<{ analysed: number; failed: number } | null>(null);
   const router = useRouter();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  function startPolling() {
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch('/api/analyse-all/progress');
+        if (res.ok) {
+          const data = await res.json();
+          setProgress(data.completed ?? 0);
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    }, 3000);
+  }
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setProgress(null);
+  }
 
   const allAnalysed = analysedCount >= totalCount;
 
   async function handleClick() {
     setLoading(true);
     setResult(null);
+    setProgress(0);
+    startPolling();
     try {
       const res = await fetch('/api/analyse-all', { method: 'POST' });
       const data = await res.json();
@@ -23,6 +56,7 @@ export function AnalyseAllButton({ analysedCount, totalCount }: { analysedCount:
     } catch {
       setResult({ analysed: 0, failed: -1 });
     } finally {
+      stopPolling();
       setLoading(false);
     }
   }
@@ -46,7 +80,9 @@ export function AnalyseAllButton({ analysedCount, totalCount }: { analysedCount:
         {loading ? (
           <>
             <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-            Analysing {totalCount} accounts...
+            {progress !== null
+              ? `Analysing... ${progress}/${totalCount}`
+              : `Analysing ${totalCount} accounts...`}
           </>
         ) : (
           <>

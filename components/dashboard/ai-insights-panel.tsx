@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -127,9 +127,40 @@ function formatActionText(text: string): React.ReactNode {
 export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [runningFullPipeline, setRunningFullPipeline] = useState(false);
+  const [pipelineProgress, setPipelineProgress] = useState<number | null>(null);
   const [localInsights, setLocalInsights] =
     useState<PortfolioInsightsData | null>(insights);
   const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  function startPolling() {
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch('/api/analyse-all/progress');
+        if (res.ok) {
+          const data = await res.json();
+          setPipelineProgress(data.completed ?? 0);
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    }, 3000);
+  }
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setPipelineProgress(null);
+  }
 
   async function generateInsights() {
     setLoading(true);
@@ -141,8 +172,11 @@ export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps)
 
     try {
       if (needsFullPipeline) {
+        setPipelineProgress(0);
+        startPolling();
         // Full pipeline: analyse all accounts + generate insights
         const analyseRes = await fetch('/api/analyse-all', { method: 'POST' });
+        stopPolling();
         if (!analyseRes.ok) {
           const body = await analyseRes.json();
           throw new Error(body.error ?? 'Failed to analyse accounts');
@@ -174,6 +208,7 @@ export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps)
         setLocalInsights(parsed);
       }
     } catch (err) {
+      stopPolling();
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
@@ -212,7 +247,9 @@ export function AiInsightsPanel({ insights, hasAnalyses }: AiInsightsPanelProps)
                 <>
                   <Loader2 className="mr-1 size-3 animate-spin" />
                   {runningFullPipeline
-                    ? 'Analysing all accounts & generating insights...'
+                    ? pipelineProgress !== null
+                      ? `Analysing... ${pipelineProgress}/60`
+                      : 'Starting analysis...'
                     : 'Generating...'}
                 </>
               ) : (
