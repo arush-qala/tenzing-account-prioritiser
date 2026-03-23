@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -125,14 +126,24 @@ function formatActionText(text: string): React.ReactNode {
 // Component
 // ---------------------------------------------------------------------------
 
+function formatEta(seconds: number): string {
+  if (seconds <= 0) return 'almost done';
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m > 0) return `~${m}m ${s}s remaining`;
+  return `~${s}s remaining`;
+}
+
 export function AiInsightsPanel({ insights, analysedCount, totalCount }: AiInsightsPanelProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [runningFullPipeline, setRunningFullPipeline] = useState(false);
-  const [pipelineProgress, setPipelineProgress] = useState<number | null>(null);
+  const [pipelineProgress, setPipelineProgress] = useState<number>(0);
   const [localInsights, setLocalInsights] =
     useState<PortfolioInsightsData | null>(insights);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -142,6 +153,7 @@ export function AiInsightsPanel({ insights, analysedCount, totalCount }: AiInsig
   }, []);
 
   function startPolling() {
+    startTimeRef.current = Date.now();
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch('/api/analyse-all/progress');
@@ -160,8 +172,18 @@ export function AiInsightsPanel({ insights, analysedCount, totalCount }: AiInsig
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-    setPipelineProgress(null);
   }
+
+  function getEta(): string {
+    if (pipelineProgress <= 0) return '~1m remaining';
+    const elapsed = (Date.now() - startTimeRef.current) / 1000;
+    const perAccount = elapsed / pipelineProgress;
+    const remaining = (totalCount - pipelineProgress) * perAccount;
+    return formatEta(remaining);
+  }
+
+  const pct = totalCount > 0 ? Math.round((pipelineProgress / totalCount) * 100) : 0;
+  const allAnalysed = analysedCount >= totalCount;
 
   async function generateInsights() {
     setLoading(true);
@@ -193,7 +215,7 @@ export function AiInsightsPanel({ insights, analysedCount, totalCount }: AiInsig
           }
         }
         // Refresh the page to update AI summaries in the priority list
-        window.location.reload();
+        router.refresh();
         return;
       }
 
@@ -247,19 +269,29 @@ export function AiInsightsPanel({ insights, analysedCount, totalCount }: AiInsig
               {loading ? (
                 <>
                   <Loader2 className="mr-1 size-3 animate-spin" />
-                  {runningFullPipeline
-                    ? pipelineProgress !== null
-                      ? `Analysing... ${pipelineProgress}/${totalCount}`
-                      : 'Starting analysis...'
-                    : 'Generating...'}
+                  Analysing...
                 </>
               ) : (
                 <>
                   <Sparkles className="mr-1 size-3" />
-                  Generate Insights
+                  {allAnalysed ? 'Re-run AI Analysis' : 'Run AI Analysis'}
                 </>
               )}
             </Button>
+            {/* Progress bar */}
+            {loading && runningFullPipeline && (
+              <div className="w-full max-w-xs">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-purple-500 transition-all duration-500 ease-out"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {pipelineProgress} of {totalCount} accounts — {getEta()}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
