@@ -98,7 +98,7 @@ SCORING RESULTS:
 Return a JSON object with exactly these fields:
 {
   "reasoning": "2-3 sentences explaining why this account needs attention NOW, framed around revenue impact (pipeline conversion, expansion, or churn risk). Be specific about £ at stake.",
-  "recommended_actions": [
+  "recommended_actions": [  // List actions in order of urgency, most urgent first
     { "action": "specific action", "owner": "person name from account data", "timeframe": "e.g. Next 7 days", "rationale": "why this action", "kpi_impact": "pipeline_conversion | expansion | churn_reduction" },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." }
