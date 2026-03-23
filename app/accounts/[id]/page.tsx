@@ -175,7 +175,7 @@ export default async function AccountDetailPage({ params }: PageProps) {
           <AtAGlance account={account} result={result} />
 
           {/* ROW 1: Three-column layout — Score | AI | Actions */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr_1fr]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr]">
             {/* Col 1: Score Decomposition + Metrics + Contradictions */}
             <div className="min-w-0 flex flex-col gap-4">
               <WaterfallChart
