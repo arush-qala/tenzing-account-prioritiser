@@ -84,7 +84,6 @@ export default async function AccountDetailPage({ params }: PageProps) {
         recommended_actions: (row.recommended_actions as AccountAnalysis['recommended_actions']) ?? [],
         risk_factors: (row.risk_factors as string[]) ?? [],
         opportunity_factors: (row.opportunity_factors as string[]) ?? [],
-        key_signals: (row.key_signals as string[]) ?? [],
         adjusted_tier: (row.adjusted_tier as string) ?? '',
         adjustment_reason: (row.adjustment_reason as string) ?? '',
         confidence_level: (row.confidence_level as AccountAnalysis['confidence_level']) ?? 'medium',

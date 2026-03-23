@@ -85,7 +85,6 @@ export async function POST(request: Request) {
       priority_type: scoringResult.priorityType,
       reasoning: analysis.reasoning,
       recommended_actions: analysis.recommended_actions,
-      key_signals: analysis.key_signals,
       risk_factors: analysis.risk_factors,
       opportunity_factors: analysis.opportunity_factors,
       counterfactual_up: counterfactuals.counterfactual_up,

@@ -8,9 +8,7 @@ import {
   CardTitle,
   CardAction,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   Sparkles,
   RefreshCw,
@@ -34,7 +32,6 @@ export interface AccountAnalysis {
   }>;
   risk_factors: string[];
   opportunity_factors: string[];
-  key_signals: string[];
   adjusted_tier: string;
   adjustment_reason: string;
   confidence_level: 'high' | 'medium' | 'low';
@@ -170,10 +167,21 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
 
         {/* Reasoning */}
         <div className="rounded-lg bg-muted/50 p-4">
-          <p className="text-base leading-relaxed">{displayAnalysis.reasoning}</p>
+          <ul className="space-y-2 text-base leading-relaxed">
+            {displayAnalysis.reasoning
+              .split(/•|\n/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((bullet, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-foreground/40" />
+                  <span>{bullet}</span>
+                </li>
+              ))}
+          </ul>
         </div>
 
-        {/* Confidence + Key Signals */}
+        {/* Confidence */}
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
@@ -183,14 +191,6 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
             <ConfidenceIcon className="size-3" />
             {capitalize(displayAnalysis.confidence_level)} Confidence
           </span>
-
-          <Separator orientation="vertical" className="h-4" />
-
-          {displayAnalysis.key_signals.map((signal) => (
-            <Badge key={signal} variant="secondary">
-              {signal}
-            </Badge>
-          ))}
         </div>
 
         {/* Tier Adjustment Callout */}

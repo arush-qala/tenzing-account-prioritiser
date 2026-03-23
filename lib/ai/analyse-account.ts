@@ -23,7 +23,6 @@ export interface AccountAnalysis {
   }>;
   risk_factors: string[];
   opportunity_factors: string[];
-  key_signals: string[];
   adjusted_tier: string;
   adjustment_reason: string;
   confidence_level: 'high' | 'medium' | 'low';
@@ -39,15 +38,12 @@ function buildFallbackAnalysis(
 ): AccountAnalysis {
   const risks: string[] = [];
   const opportunities: string[] = [];
-  const signals: string[] = [];
 
   if (scoringResult.subScores.revenueHealth < 40) {
     risks.push(`Revenue health score is low at ${scoringResult.subScores.revenueHealth}`);
-    signals.push('Declining revenue health');
   }
   if (account.days_to_renewal < 90) {
     risks.push(`Renewal in ${account.days_to_renewal} days`);
-    signals.push('Upcoming renewal');
   }
   if (account.urgent_open_tickets_count > 0) {
     risks.push(`${account.urgent_open_tickets_count} urgent open tickets`);
@@ -56,7 +52,6 @@ function buildFallbackAnalysis(
     opportunities.push(
       `Expansion pipeline of £${account.expansion_pipeline_gbp.toLocaleString('en-GB')}`,
     );
-    signals.push('Active expansion pipeline');
   }
   if (account.seat_utilisation_pct < 0.5) {
     risks.push(
@@ -65,11 +60,9 @@ function buildFallbackAnalysis(
   }
   if (scoringResult.subScores.engagement > 70) {
     opportunities.push('Strong engagement scores');
-    signals.push('High engagement');
   }
 
   // Ensure we always have at least some content
-  if (signals.length === 0) signals.push('Overall score profile');
   if (risks.length === 0) risks.push('No major risks identified from available data');
   if (opportunities.length === 0)
     opportunities.push('Monitor for emerging opportunities');
@@ -102,7 +95,6 @@ function buildFallbackAnalysis(
     ],
     risk_factors: risks,
     opportunity_factors: opportunities,
-    key_signals: signals.slice(0, 3),
     adjusted_tier: scoringResult.priorityTier,
     adjustment_reason: 'Tier confirmed (fallback analysis, no AI adjustment)',
     confidence_level: 'low',
@@ -142,7 +134,6 @@ export async function analyseAccount(
       !Array.isArray(parsed.recommended_actions) ||
       !Array.isArray(parsed.risk_factors) ||
       !Array.isArray(parsed.opportunity_factors) ||
-      !Array.isArray(parsed.key_signals) ||
       !parsed.adjusted_tier ||
       !parsed.adjustment_reason ||
       !parsed.confidence_level

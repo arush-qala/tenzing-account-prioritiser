@@ -97,17 +97,16 @@ SCORING RESULTS:
 
 Return a JSON object with exactly these fields:
 {
-  "reasoning": "2-3 sentences explaining why this account needs attention NOW, framed around revenue impact (pipeline conversion, expansion, or churn risk). Be specific about £ at stake.",
+  "reasoning": "3-4 bullet points separated by newlines, each starting with •. One clear insight per bullet, framed around revenue impact (pipeline conversion, expansion, or churn risk). Be specific about £ at stake. No paragraphs.",
   "recommended_actions": [  // List actions in order of urgency, most urgent first
     { "action": "specific action", "owner": "person name from account data", "timeframe": "e.g. Next 7 days", "rationale": "why this action", "kpi_impact": "pipeline_conversion | expansion | churn_reduction" },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." }
   ],
-  "risk_factors": ["specific risk 1", "specific risk 2"],
-  "opportunity_factors": ["specific opportunity 1", "specific opportunity 2"],
-  "key_signals": ["top signal 1", "top signal 2", "top signal 3"],
+  "risk_factors": ["max 25 words each, concise and direct — e.g. '£143K contraction risk (36% of ARR) with usage collapsing and procurement requesting commercial discussion'"],
+  "opportunity_factors": ["max 25 words each, concise and direct — e.g. 'Active expansion pipeline at £48K (28% of ARR) with strong NPS and increasing seat utilisation'"],
   "adjusted_tier": "${scoringResult.priorityTier}",
-  "adjustment_reason": "explain if changed from current tier, or 'Tier confirmed by qualitative review' if unchanged",
+  "adjustment_reason": "One sentence max. If unchanged: 'Tier confirmed — [key reason]'. If changed: '[Old] → [New]: [key reason]'",
   "confidence_level": "high|medium|low"
 }`;
 
