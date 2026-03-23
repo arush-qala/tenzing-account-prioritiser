@@ -97,14 +97,14 @@ SCORING RESULTS:
 
 Return a JSON object with exactly these fields:
 {
-  "reasoning": "3-4 bullet points separated by newlines, each starting with •. One clear insight per bullet, framed around revenue impact (pipeline conversion, expansion, or churn risk). Be specific about £ at stake. No paragraphs.",
+  "reasoning": "3-4 bullet points separated by newlines, each starting with •. Max 15 words per bullet. Focus on what matters for action: £ at risk, churn/expansion/pipeline impact, and what needs to happen. No calculation details, no percentage movements, no score explanations.",
   "recommended_actions": [  // List actions in order of urgency, most urgent first
     { "action": "specific action", "owner": "person name from account data", "timeframe": "e.g. Next 7 days", "rationale": "why this action", "kpi_impact": "pipeline_conversion | expansion | churn_reduction" },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." }
   ],
-  "risk_factors": ["max 15 words each, concise and direct"],
-  "opportunity_factors": ["max 15 words each, concise and direct"],
+  "risk_factors": ["max 3-4 items, max 15 words each, concise and direct"],
+  "opportunity_factors": ["max 3-4 items, max 15 words each, concise and direct"],
   "adjusted_tier": "${scoringResult.priorityTier}",
   "adjustment_reason": "One sentence max. If unchanged: 'Tier confirmed — [key reason]'. If changed: '[Old] → [New]: [key reason]'",
   "confidence_level": "high|medium|low"
