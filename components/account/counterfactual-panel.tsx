@@ -64,9 +64,18 @@ export function CounterfactualPanel({
               </h4>
             </div>
             {counterfactualUp ? (
-              <p className="text-sm leading-relaxed text-red-700">
-                {counterfactualUp}
-              </p>
+              <ul className="space-y-1.5 text-sm leading-relaxed text-red-700">
+                {counterfactualUp
+                  .split(/•|\n/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((bullet, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-red-400" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+              </ul>
             ) : (
               <p className="text-sm italic text-red-600/60">
                 No escalation scenario available
@@ -83,9 +92,18 @@ export function CounterfactualPanel({
               </h4>
             </div>
             {counterfactualDown ? (
-              <p className="text-sm leading-relaxed text-green-700">
-                {counterfactualDown}
-              </p>
+              <ul className="space-y-1.5 text-sm leading-relaxed text-green-700">
+                {counterfactualDown
+                  .split(/•|\n/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((bullet, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-green-400" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+              </ul>
             ) : (
               <p className="text-sm italic text-green-600/60">
                 No improvement scenario available

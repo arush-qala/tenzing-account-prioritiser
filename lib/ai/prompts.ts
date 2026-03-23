@@ -103,8 +103,8 @@ Return a JSON object with exactly these fields:
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." },
     { "action": "...", "owner": "...", "timeframe": "...", "rationale": "...", "kpi_impact": "..." }
   ],
-  "risk_factors": ["max 25 words each, concise and direct — e.g. '£143K contraction risk (36% of ARR) with usage collapsing and procurement requesting commercial discussion'"],
-  "opportunity_factors": ["max 25 words each, concise and direct — e.g. 'Active expansion pipeline at £48K (28% of ARR) with strong NPS and increasing seat utilisation'"],
+  "risk_factors": ["max 15 words each, concise and direct"],
+  "opportunity_factors": ["max 15 words each, concise and direct"],
   "adjusted_tier": "${scoringResult.priorityTier}",
   "adjustment_reason": "One sentence max. If unchanged: 'Tier confirmed — [key reason]'. If changed: '[Old] → [New]: [key reason]'",
   "confidence_level": "high|medium|low"
@@ -135,8 +135,8 @@ export function buildCounterfactualPrompt(
   sensitivityData: SensitivityEntry[],
 ): CounterfactualPrompt {
   const system =
-    'You are a senior portfolio analyst at a B2B tech PE firm. ' +
-    'Provide specific, metric-driven counterfactual analysis. ' +
+    'You are a senior portfolio analyst at a B2B tech company. ' +
+    'Provide concise, action-oriented counterfactual analysis. ' +
     'Return ONLY valid JSON with no markdown fences, no commentary, and no extra keys.';
 
   const sensitivityBlock = sensitivityData
@@ -172,8 +172,8 @@ TIER BOUNDARIES: Critical >= 80, High >= 65, Medium >= 50, Low >= 35, Monitor < 
 
 Return a JSON object with exactly these fields:
 {
-  "counterfactual_up": "Specific narrative about what metric changes would move this account UP one tier. Reference exact values and sub-scores.",
-  "counterfactual_down": "Specific narrative about what metric changes would move this account DOWN one tier. Reference exact values and sub-scores."
+  "counterfactual_up": "2-3 bullet points separated by newlines, each starting with •. Format: action → effect with brief reasoning. Focus on what would worsen this account, not detailed numbers. Keep each bullet under 20 words.",
+  "counterfactual_down": "2-3 bullet points separated by newlines, each starting with •. Format: action → effect with brief reasoning. Focus on what would improve this account, not detailed numbers. Keep each bullet under 20 words."
 }`;
 
   return { system, user };
