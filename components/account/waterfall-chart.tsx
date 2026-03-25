@@ -169,8 +169,8 @@ export function WaterfallChart({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[260px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="w-full">
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart
               data={chartData}
               layout="vertical"
