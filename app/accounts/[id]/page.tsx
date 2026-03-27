@@ -18,6 +18,7 @@ import { CommentsSection } from '@/components/account/comments-section';
 import { ActionRecorder } from '@/components/account/action-recorder';
 import { AiChatPanel } from '@/components/account/ai-chat-panel';
 import { VoiceChat } from '@/components/account/voice-chat';
+import { DebugErrorBoundary } from '@/components/debug-error-boundary';
 import type { AccountAnalysis } from '@/components/account/ai-reasoning';
 
 // ---------------------------------------------------------------------------
@@ -149,87 +150,117 @@ export default async function AccountDetailPage({ params }: PageProps) {
   // ---- Render ----
   return (
     <div className="min-h-screen bg-background">
-      <NavHeader userEmail={user.email} />
+      <DebugErrorBoundary label="NavHeader">
+        <NavHeader userEmail={user.email} />
+      </DebugErrorBoundary>
 
       <main className="mx-auto max-w-[1400px] px-6 py-6">
         <div className="flex flex-col gap-4">
           {/* Account header + Chat + Voice buttons */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <AccountHeader account={account} result={result} />
+              <DebugErrorBoundary label="AccountHeader">
+                <AccountHeader account={account} result={result} />
+              </DebugErrorBoundary>
             </div>
             <div className="flex items-center gap-2">
-              <VoiceChat
-                accountId={account.account_id}
-                accountName={account.account_name}
-                accountContext={voiceContext}
-              />
-              <AiChatPanel
-                accountId={account.account_id}
-                accountName={account.account_name}
-              />
+              <DebugErrorBoundary label="VoiceChat">
+                <VoiceChat
+                  accountId={account.account_id}
+                  accountName={account.account_name}
+                  accountContext={voiceContext}
+                />
+              </DebugErrorBoundary>
+              <DebugErrorBoundary label="AiChatPanel">
+                <AiChatPanel
+                  accountId={account.account_id}
+                  accountName={account.account_name}
+                />
+              </DebugErrorBoundary>
             </div>
           </div>
 
           {/* At a Glance strip */}
-          <AtAGlance account={account} result={result} />
+          <DebugErrorBoundary label="AtAGlance">
+            <AtAGlance account={account} result={result} />
+          </DebugErrorBoundary>
 
           {/* ROW 1: Three-column layout — Score | AI | Actions */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr]">
             {/* Col 1: Score Decomposition + Metrics + Contradictions */}
             <div className="min-w-0 flex flex-col gap-4">
-              <WaterfallChart
-                subScores={result.subScores}
-                calibratedScore={result.calibratedScore}
-                priorityTier={result.priorityTier}
-              />
-              <MetricsGrid account={account} />
+              <DebugErrorBoundary label="WaterfallChart">
+                <WaterfallChart
+                  subScores={result.subScores}
+                  calibratedScore={result.calibratedScore}
+                  priorityTier={result.priorityTier}
+                />
+              </DebugErrorBoundary>
+              <DebugErrorBoundary label="MetricsGrid">
+                <MetricsGrid account={account} />
+              </DebugErrorBoundary>
               {result.contradictions.length > 0 && (
-                <ContradictionsPanel contradictions={result.contradictions} />
+                <DebugErrorBoundary label="ContradictionsPanel">
+                  <ContradictionsPanel contradictions={result.contradictions} />
+                </DebugErrorBoundary>
               )}
             </div>
 
             {/* Col 2: AI Analysis + Risk/Opportunity */}
             <div className="min-w-0 flex flex-col gap-4">
-              <AiReasoning
-                accountId={account.account_id}
-                analysis={analysis}
-              />
-              {analysis && (
-                <RiskOpportunity
-                  riskFactors={analysis.risk_factors}
-                  opportunityFactors={analysis.opportunity_factors}
+              <DebugErrorBoundary label="AiReasoning">
+                <AiReasoning
+                  accountId={account.account_id}
+                  analysis={analysis}
                 />
+              </DebugErrorBoundary>
+              {analysis && (
+                <DebugErrorBoundary label="RiskOpportunity">
+                  <RiskOpportunity
+                    riskFactors={analysis.risk_factors}
+                    opportunityFactors={analysis.opportunity_factors}
+                  />
+                </DebugErrorBoundary>
               )}
             </div>
 
             {/* Col 3: Recommended Actions */}
             <div className="min-w-0 flex flex-col gap-4">
-              <RecommendedActions
-                accountId={account.account_id}
-                actions={actions}
-              />
+              <DebugErrorBoundary label="RecommendedActions">
+                <RecommendedActions
+                  accountId={account.account_id}
+                  actions={actions}
+                />
+              </DebugErrorBoundary>
             </div>
           </div>
 
           {/* ROW 2: Notes + What-If */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <NotesPanel account={account} />
+            <DebugErrorBoundary label="NotesPanel">
+              <NotesPanel account={account} />
+            </DebugErrorBoundary>
             {(counterfactualUp || counterfactualDown) && (
-              <CounterfactualPanel
-                counterfactualUp={counterfactualUp}
-                counterfactualDown={counterfactualDown}
-              />
+              <DebugErrorBoundary label="CounterfactualPanel">
+                <CounterfactualPanel
+                  counterfactualUp={counterfactualUp}
+                  counterfactualDown={counterfactualDown}
+                />
+              </DebugErrorBoundary>
             )}
           </div>
 
           {/* ROW 3: Comments + Action Recorder */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CommentsSection accountId={account.account_id} />
-            <ActionRecorder
-              accountId={account.account_id}
-              existingActions={existingActions}
-            />
+            <DebugErrorBoundary label="CommentsSection">
+              <CommentsSection accountId={account.account_id} />
+            </DebugErrorBoundary>
+            <DebugErrorBoundary label="ActionRecorder">
+              <ActionRecorder
+                accountId={account.account_id}
+                existingActions={existingActions}
+              />
+            </DebugErrorBoundary>
           </div>
         </div>
       </main>
