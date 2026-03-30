@@ -139,7 +139,12 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
   }
 
   // ---- Analysis available ----
-  const ConfidenceIcon = confidenceIcons[displayAnalysis.confidence_level];
+  // Normalise confidence_level: DB column is TEXT so AI may return unexpected casing/values
+  const normalisedConfidence: AccountAnalysis['confidence_level'] =
+    (['high', 'medium', 'low'] as const).find(
+      (v) => displayAnalysis.confidence_level?.toLowerCase().startsWith(v),
+    ) ?? 'medium';
+  const ConfidenceIcon = confidenceIcons[normalisedConfidence];
 
   return (
     <Card>
@@ -188,11 +193,11 @@ export function AiReasoning({ analysis, accountId, isLoading: externalLoading }:
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-              confidenceStyles[displayAnalysis.confidence_level]
+              confidenceStyles[normalisedConfidence]
             }`}
           >
             <ConfidenceIcon className="size-3" />
-            {capitalize(displayAnalysis.confidence_level)} Confidence
+            {capitalize(normalisedConfidence)} Confidence
           </span>
         </div>
 
